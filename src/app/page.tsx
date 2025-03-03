@@ -1,95 +1,87 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+'use client';
+import {FloatButton} from "antd";
+import {FaPhoneAlt} from "react-icons/fa";
+import {useState, useRef, useEffect} from "react";
+import {CSSProperties} from "react";
+import ChatWindow from "./components/chat-window";
 
 export default function Home() {
-  return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>src/app/page.tsx</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    const [isVisible, setIsVisible] = useState(false);
+    const [animationReady, setAnimationReady] = useState(false);
+    const buttonRef = useRef<HTMLDivElement>(null);
+    const [buttonPosition, setButtonPosition] = useState<{ right: number; bottom: number } | null>(null);
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
+    useEffect(() => {
+        if (buttonRef.current) {
+            const rect = buttonRef.current.getBoundingClientRect();
+            setButtonPosition({
+                right: window.innerWidth - rect.right,
+                bottom: window.innerHeight - rect.top
+            });
+            setAnimationReady(true);
+        }
+    }, []);
+
+    const handleOpen = () => {
+        setIsVisible(true);
+    };
+
+    const handleClose = () => {
+        setIsVisible(false);
+    };
+
+    const getAnimationStyles = (): CSSProperties => {
+        if (!buttonPosition) return {};
+
+        if (!animationReady && !isVisible) {
+            return {
+                display: 'none'
+            };
+        }
+
+        return {
+            opacity: isVisible ? 1 : 0,
+            transform: isVisible
+                ? 'scale(1) translate(0, 0)'
+                : `scale(0.2) translate(${buttonPosition.right / 5}px, ${buttonPosition.bottom / 5}px)`,
+            transition: 'all 0.3s cubic-bezier(0.23, 1, 0.32, 1)',
+            pointerEvents: isVisible ? 'auto' : 'none'
+        };
+    };
+
+    return (
+        <div>
+            <main>
+                <div>Màn hình khách hàng</div>
+
+                <div
+                    ref={buttonRef}
+                    style={{
+                        opacity: isVisible ? 0 : 1,
+                        transition: 'opacity 0.2s',
+                        position: 'fixed',
+                        right: '24px',
+                        bottom: '24px'
+                    }}
+                >
+                    <FloatButton
+                        icon={<FaPhoneAlt/>}
+                        onClick={handleOpen}
+                    />
+                </div>
+
+                {(animationReady || isVisible) && (
+                    <div style={{
+                        position: 'fixed',
+                        bottom: 0,
+                        right: 0,
+                        zIndex: 1000,
+                        ...getAnimationStyles()
+                    }}>
+                        <ChatWindow onCloseChatWindow={handleClose}/>
+                    </div>
+                )}
+            </main>
         </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+    );
 }
