@@ -29,6 +29,7 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
     const timerInterval = useRef<NodeJS.Timeout | null>(null);
 
     // WebRTC refs
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const socketRef = useRef<any>(null);
     const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
     const localStreamRef = useRef<MediaStream | null>(null);

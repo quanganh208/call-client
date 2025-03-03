@@ -29,6 +29,7 @@ const AdminPage: React.FC = () => {
     const [callInProgress, setCallInProgress] = useState(false);
 
     // WebRTC refs
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const socketRef = useRef<any>(null);
     const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
     const localStreamRef = useRef<MediaStream | null>(null);
@@ -111,6 +112,7 @@ const AdminPage: React.FC = () => {
         // Xử lý khi có cuộc gọi đến
         socketRef.current.on("incoming-call", (data: {
             socketId: string,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             userData: any,
             callType: 'audio' | 'video'
         }) => {
