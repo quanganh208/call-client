@@ -29,7 +29,6 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
     const [callDuration, setCallDuration] = useState(0);
     const timerInterval = useRef<NodeJS.Timeout | null>(null);
 
-    // WebRTC refs
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const socketRef = useRef<any>(null);
     const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
@@ -41,18 +40,14 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
     const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
     const adminIdRef = useRef<string | null>(null);
 
-    // Thiết lập kết nối socket và sự kiện
     useEffect(() => {
         if (!userInfo) return;
 
-        // Tạo kết nối Socket.IO
         const SIGNALING_SERVER = process.env.NEXT_PUBLIC_SIGNALING_SERVER || "http://localhost:8080";
         socketRef.current = io(SIGNALING_SERVER);
 
-        // Đăng ký là client
         socketRef.current.emit("register-client", userInfo);
 
-        // Xử lý các sự kiện
         socketRef.current.on("call-accepted", handleCallAccepted);
         socketRef.current.on("offer", handleOffer);
         socketRef.current.on("answer", handleAnswer);
@@ -67,7 +62,6 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
         };
     }, [userInfo]);
 
-    // Hàm xử lý khởi tạo cuộc gọi
     const initiateCall = async (type: "audio" | "video") => {
         try {
             if (!userInfo || !socketRef.current) {
@@ -77,9 +71,7 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
 
             setCallStatus("calling");
             setCallType(type);
-            console.log(`Đang chờ tư vấn viên kết nối cho cuộc gọi ${type}...`);
 
-            // Tạo stream với các tùy chọn dựa trên loại cuộc gọi
             const mediaConstraints = {
                 audio: true,
                 video: type === "video"
@@ -88,19 +80,16 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
             const stream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
             localStreamRef.current = stream;
 
-            // Xử lý stream âm thanh
             if (localAudioRef.current) {
                 localAudioRef.current.srcObject = stream;
-                localAudioRef.current.muted = true; // Tắt âm thanh cục bộ để tránh tiếng vang
+                localAudioRef.current.muted = true;
             }
 
-            // Xử lý stream video nếu là cuộc gọi video
             if (type === "video" && localVideoRef.current) {
                 localVideoRef.current.srcObject = stream;
                 localVideoRef.current.muted = true;
             }
 
-            // Gửi yêu cầu gọi đến server với loại cuộc gọi
             socketRef.current.emit("call-request", {callType: type});
         } catch (error) {
             console.error(`Không thể bắt đầu cuộc gọi ${type}:`, error);
@@ -110,17 +99,13 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
         }
     };
 
-    // Xử lý khi admin chấp nhận cuộc gọi
     const handleCallAccepted = async (data: { adminId: string, callType: "audio" | "video" }) => {
         try {
             adminIdRef.current = data.adminId;
             setCallType(data.callType);
-            console.log(`Tư vấn viên đã kết nối cho cuộc gọi ${data.callType}!`);
 
-            // Khởi tạo kết nối peer
             createPeerConnection();
 
-            // Thêm tất cả track vào kết nối
             if (localStreamRef.current && peerConnectionRef.current) {
                 localStreamRef.current.getTracks().forEach(track => {
                     if (peerConnectionRef.current && localStreamRef.current) {
@@ -129,7 +114,6 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
                 });
             }
 
-            // Tạo và gửi offer
             if (peerConnectionRef.current) {
                 const offer = await peerConnectionRef.current.createOffer();
                 await peerConnectionRef.current.setLocalDescription(offer);
@@ -146,7 +130,6 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
         }
     };
 
-    // Tạo kết nối WebRTC
     const createPeerConnection = () => {
         const configuration = {
             iceServers: [
@@ -157,7 +140,6 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
 
         peerConnectionRef.current = new RTCPeerConnection(configuration);
 
-        // Xử lý ICE candidate
         peerConnectionRef.current.onicecandidate = (event) => {
             if (event.candidate && adminIdRef.current && socketRef.current) {
                 socketRef.current.emit("ice-candidate", {
@@ -167,16 +149,13 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
             }
         };
 
-        // Xử lý track từ xa
         peerConnectionRef.current.ontrack = (event) => {
             remoteStreamRef.current = event.streams[0];
 
-            // Xử lý audio
             if (remoteAudioRef.current) {
                 remoteAudioRef.current.srcObject = event.streams[0];
             }
 
-            // Xử lý video nếu có track video
             const hasVideoTracks = event.streams[0].getVideoTracks().length > 0;
             if (hasVideoTracks && remoteVideoRef.current) {
                 remoteVideoRef.current.srcObject = event.streams[0];
@@ -186,7 +165,6 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
             setCallStatus("connected");
         };
 
-        // Các trạng thái kết nối
         peerConnectionRef.current.onconnectionstatechange = () => {
             if (peerConnectionRef.current) {
                 if (peerConnectionRef.current.connectionState === "connected") {
@@ -199,7 +177,6 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
         };
     };
 
-    // Xử lý nhận offer từ admin
     const handleOffer = async (data: {
         offer: RTCSessionDescriptionInit,
         source: string,
@@ -209,7 +186,6 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
             adminIdRef.current = data.source;
             setCallType(data.callType);
 
-            // Nhận stream cục bộ trước khi tạo kết nối peer
             if (!localStreamRef.current) {
                 const mediaConstraints = {
                     audio: true,
@@ -219,7 +195,6 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
                 const stream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
                 localStreamRef.current = stream;
 
-                // Hiển thị stream cục bộ
                 if (localAudioRef.current) {
                     localAudioRef.current.srcObject = stream;
                     localAudioRef.current.muted = true;
@@ -235,7 +210,6 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
                 createPeerConnection();
             }
 
-            // Thêm track vào kết nối peer
             if (localStreamRef.current && peerConnectionRef.current) {
                 localStreamRef.current.getTracks().forEach(track => {
                     if (peerConnectionRef.current && localStreamRef.current) {
@@ -246,7 +220,6 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
 
             await peerConnectionRef.current?.setRemoteDescription(new RTCSessionDescription(data.offer));
 
-            // Tạo và gửi answer
             const answer = await peerConnectionRef.current?.createAnswer();
             await peerConnectionRef.current?.setLocalDescription(answer);
 
@@ -260,7 +233,6 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
         }
     };
 
-    // Xử lý nhận answer từ admin
     const handleAnswer = async (data: { answer: RTCSessionDescriptionInit, callType: "audio" | "video" }) => {
         try {
             setCallType(data.callType);
@@ -272,7 +244,6 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
         }
     };
 
-    // Xử lý ICE candidate
     const handleIceCandidate = (data: { candidate: RTCIceCandidateInit }) => {
         try {
             if (peerConnectionRef.current) {
@@ -283,7 +254,6 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
         }
     };
 
-    // Kết thúc cuộc gọi
     const endCall = async () => {
         if (adminIdRef.current && socketRef.current) {
             socketRef.current.emit("end-call", {
@@ -295,36 +265,28 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
         setCallStatus("idle");
         setMuted(false);
         setVideoEnabled(true);
-        console.log("Cuộc gọi đã kết thúc");
     };
 
-    // Xử lý khi admin kết thúc cuộc gọi
     const handleCallEnded = async () => {
         cleanupWebRTC();
         setCallStatus("idle");
         setMuted(false);
         setVideoEnabled(true);
-        console.log("Tư vấn viên đã kết thúc cuộc gọi");
     };
 
-    // Dọn dẹp các kết nối WebRTC
     const cleanupWebRTC = () => {
-        // Dừng các track media
         if (localStreamRef.current) {
             localStreamRef.current.getTracks().forEach(track => track.stop());
             localStreamRef.current = null;
         }
 
-        // Đóng kết nối peer
         if (peerConnectionRef.current) {
             peerConnectionRef.current.close();
             peerConnectionRef.current = null;
         }
 
-        // Xóa tham chiếu đến admin
         adminIdRef.current = null;
 
-        // Làm sạch các video element
         if (localVideoRef.current) {
             localVideoRef.current.srcObject = null;
         }
@@ -338,8 +300,6 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
         setShowForm(false);
 
         localStorage.setItem('userInfo', JSON.stringify(info));
-
-        console.log('Thông tin người dùng mới:', info);
     };
 
     const handleCloseForm = () => {
@@ -354,15 +314,12 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
             .padStart(2, "0")}`;
     };
 
-    // Cập nhật timer khi callStatus thay đổi
     useEffect(() => {
         if (callStatus === "connected") {
-            // Bắt đầu bộ đếm khi đã kết nối
             timerInterval.current = setInterval(() => {
                 setCallDuration((prev) => prev + 1);
             }, 1000);
         } else {
-            // Dừng và reset timer khi không ở trạng thái "connected"
             if (timerInterval.current) {
                 clearInterval(timerInterval.current);
                 timerInterval.current = null;
@@ -377,7 +334,6 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
         };
     }, [callStatus]);
 
-    // Xử lý bật/tắt video
     useEffect(() => {
         if (localStreamRef.current) {
             localStreamRef.current.getVideoTracks().forEach(track => {
@@ -386,7 +342,6 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
         }
     }, [videoEnabled]);
 
-    // Xử lý Mute/Unmute
     useEffect(() => {
         if (localStreamRef.current) {
             localStreamRef.current.getAudioTracks().forEach(track => {
@@ -403,7 +358,6 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
             const parsedUserInfo = JSON.parse(savedUserInfo);
             setUserInfo(parsedUserInfo);
             setShowForm(false);
-            console.log('Thông tin người dùng được lấy từ localStorage:', parsedUserInfo);
         }
     }, []);
 

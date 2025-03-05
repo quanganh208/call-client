@@ -98,8 +98,8 @@ const FullscreenVideoCall: React.FC<FullscreenVideoCallProps> = ({
             objectFit: 'cover',
             ...(isMobile ? {
                 maxHeight: windowSize.width > windowSize.height
-                    ? '40vh'  // Landscape mode
-                    : '30vh'  // Portrait mode
+                    ? '40vh'
+                    : '30vh'
             } : {})
         };
     };
