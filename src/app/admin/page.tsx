@@ -4,6 +4,7 @@ import {Card, List, Typography, Badge, Space} from 'antd';
 import io from 'socket.io-client';
 import Head from 'next/head';
 import CallModal from '../components/call-modal';
+import '@ant-design/v5-patch-for-react-19';
 
 const {Title, Text} = Typography;
 
@@ -117,6 +118,47 @@ const AdminPage: React.FC = () => {
             activeCallClientIdRef.current = data.socketId;
             setActiveCallType(data.callType);
             setCallModalVisible(true);
+        });
+
+        socketRef.current.on("call-timeout", () => {
+            setClients(prevClients => {
+                return prevClients.map(c => {
+                    if (c.socketId === activeCallClientIdRef.current) {
+                        return {...c, callStatus: 'ended'};
+                    }
+                    return c;
+                });
+            });
+
+            cleanupWebRTC();
+            setActiveCallClientId(null);
+            activeCallClientIdRef.current = null;
+            setActiveCallType('audio');
+            setCallModalVisible(false);
+            setCallInProgress(false);
+        });
+
+        socketRef.current.on("call-request-cancelled", (data: {
+            socketId: string,
+            callType: 'audio' | 'video'
+        }) => {
+            if (data.socketId === activeCallClientIdRef.current) {
+                setClients(prevClients => {
+                    return prevClients.map(c => {
+                        if (c.socketId === data.socketId) {
+                            return {...c, callStatus: 'ended'};
+                        }
+                        return c;
+                    });
+                });
+
+                cleanupWebRTC();
+                setActiveCallClientId(null);
+                activeCallClientIdRef.current = null;
+                setActiveCallType('audio');
+                setCallModalVisible(false);
+                setCallInProgress(false);
+            }
         });
 
         const socket = socketRef.current;

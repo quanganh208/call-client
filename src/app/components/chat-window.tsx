@@ -1,5 +1,4 @@
-import {Avatar, Button, Card, Input, Typography} from "antd";
-import {IoCloseCircle} from "react-icons/io5";
+import {Avatar, Button, Card, Input, message, Typography} from "antd";
 import {IoIosCall, IoIosVideocam, IoMdMic, IoMdMicOff} from "react-icons/io";
 import {SmileOutlined} from "@ant-design/icons";
 import {FiPaperclip, FiSend} from "react-icons/fi";
@@ -7,6 +6,8 @@ import UserInformationForm from "@/app/components/user-info-form";
 import React, {useEffect, useState, useRef} from "react";
 import io from "socket.io-client";
 import {MdCallEnd, MdVideocam, MdVideocamOff} from "react-icons/md";
+import {IoCloseCircle} from "react-icons/io5";
+import '@ant-design/v5-patch-for-react-19';
 
 interface ChatWindowProps {
     onCloseChatWindow: () => void;
@@ -53,6 +54,7 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
         socketRef.current.on("answer", handleAnswer);
         socketRef.current.on("ice-candidate", handleIceCandidate);
         socketRef.current.on("call-ended", handleCallEnded);
+        socketRef.current.on("call-timeout", handleCallTimeout);
 
         return () => {
             if (socketRef.current) {
@@ -61,6 +63,14 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
             cleanupWebRTC();
         };
     }, [userInfo]);
+
+    const handleCallTimeout = async () => {
+        await message.warning("Không có nhân viên nào trả lời cuộc gọi, vui lòng thử lại sau")
+        cleanupWebRTC();
+        setCallStatus("idle");
+        setMuted(false);
+        setVideoEnabled(true);
+    };
 
     const initiateCall = async (type: "audio" | "video") => {
         try {
@@ -255,6 +265,12 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
     };
 
     const endCall = async () => {
+        if (callStatus === "calling" && socketRef.current) {
+            socketRef.current.emit("cancel-call-request", {
+                callType: callType
+            });
+        }
+
         if (adminIdRef.current && socketRef.current) {
             socketRef.current.emit("end-call", {
                 targetId: adminIdRef.current
@@ -590,19 +606,17 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
                             alignItems: 'center',
                             justifyContent: 'center'
                         }}>
-                            {/* Audio elements for WebRTC */}
                             <audio ref={localAudioRef} autoPlay playsInline style={{display: 'none'}}/>
                             <audio ref={remoteAudioRef} autoPlay playsInline style={{display: 'none'}}/>
 
-                            {/* Video container */}
                             {callType === "video" && callStatus !== "idle" && (
                                 <div style={{width: '100%', height: '100%', position: 'relative'}}>
-                                    {/* Remote video (full size) */}
                                     <video
                                         ref={remoteVideoRef}
                                         autoPlay
                                         playsInline
                                         style={{
+                                            transform: 'scaleX(-1)',
                                             width: '100%',
                                             height: '100%',
                                             objectFit: 'cover',
@@ -611,13 +625,13 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
                                         }}
                                     />
 
-                                    {/* Local video (picture-in-picture) */}
                                     <video
                                         ref={localVideoRef}
                                         autoPlay
                                         playsInline
                                         muted
                                         style={{
+                                            transform: 'scaleX(-1)',
                                             position: 'absolute',
                                             width: '120px',
                                             height: '90px',

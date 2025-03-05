@@ -8,6 +8,7 @@ import {
 import {IoPersonCircle} from 'react-icons/io5';
 import {MdCallEnd, MdFullscreen, MdVideocam, MdVideocamOff} from 'react-icons/md';
 import FullscreenVideoCall from './fullscreen-video-call';
+import '@ant-design/v5-patch-for-react-19';
 
 interface CallModalProps {
     visible: boolean;
@@ -22,8 +23,8 @@ interface CallModalProps {
     toggleMute: () => void;
     localStream: MediaStream | null;
     remoteStream: MediaStream | null;
-    localVideoRef: React.RefObject<HTMLVideoElement>;
-    remoteVideoRef: React.RefObject<HTMLVideoElement>;
+    localVideoRef: React.RefObject<HTMLVideoElement | null>;
+    remoteVideoRef: React.RefObject<HTMLVideoElement | null>;
 }
 
 const {Text} = Typography;
@@ -185,6 +186,7 @@ export default function CallModal({
                                     autoPlay
                                     playsInline
                                     style={{
+                                        transform: 'scaleX(-1)',
                                         width: '100%',
                                         height: '100%',
                                         objectFit: 'cover'
@@ -216,6 +218,7 @@ export default function CallModal({
                                     playsInline
                                     muted
                                     style={{
+                                        transform: 'scaleX(-1)',
                                         width: '100%',
                                         height: '100%',
                                         objectFit: 'cover'

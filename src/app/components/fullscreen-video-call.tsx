@@ -7,13 +7,14 @@ import {
 } from 'react-icons/md';
 import {IoMdMic, IoMdMicOff} from "react-icons/io";
 import {Button, Tooltip, Typography} from "antd";
+import '@ant-design/v5-patch-for-react-19';
 
 interface FullscreenVideoCallProps {
     name?: string;
     localStream: MediaStream | null;
     remoteStream: MediaStream | null;
-    localVideoRef: React.RefObject<HTMLVideoElement>;
-    remoteVideoRef: React.RefObject<HTMLVideoElement>;
+    localVideoRef: React.RefObject<HTMLVideoElement | null>;
+    remoteVideoRef: React.RefObject<HTMLVideoElement | null>;
     onEndCall: () => void;
     onToggleMute: () => void;
     onToggleVideo: () => void;
@@ -93,6 +94,7 @@ const FullscreenVideoCall: React.FC<FullscreenVideoCallProps> = ({
         const isMobile = windowSize.width < 768;
 
         return {
+            transform: 'scaleX(-1)',
             width: '100%',
             height: '100%',
             objectFit: 'cover',
