@@ -1,7 +1,7 @@
 // pages/admin.tsx
 'use client'
 import React, {useEffect, useRef, useState} from 'react';
-import {Card, List, Typography, message, Badge, Space} from 'antd';
+import {Card, List, Typography, Badge, Space} from 'antd';
 import io from 'socket.io-client';
 import Head from 'next/head';
 import CallModal from '../components/call-modal';
@@ -40,6 +40,9 @@ const AdminPage: React.FC = () => {
     const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
     const activeCallClientIdRef = useRef<string | null>(null);
     const iceCandidatesQueue = useRef<RTCIceCandidateInit[]>([]);
+
+    const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+    const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
 
     // Xử lý ICE candidate đã được cải thiện để lưu trữ candidates nếu remote description chưa sẵn sàng
     const handleIceCandidate = (data: { candidate: RTCIceCandidateInit, source: string }) => {
@@ -185,7 +188,7 @@ const AdminPage: React.FC = () => {
         try {
             // Kiểm tra xem có đang trong cuộc gọi khác không
             if (activeCallClientIdRef.current && activeCallClientIdRef.current !== clientId) {
-                message.warning("Bạn đang trong một cuộc gọi khác. Vui lòng kết thúc trước khi nhận cuộc gọi mới.");
+                console.log("Bạn đang trong một cuộc gọi khác. Vui lòng kết thúc trước khi nhận cuộc gọi mới.");
                 return;
             }
 
@@ -210,12 +213,12 @@ const AdminPage: React.FC = () => {
             const stream = await navigator.mediaDevices.getUserMedia(constraints)
                 .catch(err => {
                     console.error("Lỗi khi lấy media stream:", err);
-                    message.error(`Không thể truy cập ${callType === 'video' ? 'camera và ' : ''}microphone. Vui lòng kiểm tra quyền truy cập.`);
                     throw err;
                 });
 
             console.log(`Đã lấy được stream ${callType}`);
             localStreamRef.current = stream;
+            setLocalStream(stream);
 
             // Xử lý audio local
             if (localAudioRef.current) {
@@ -307,6 +310,7 @@ const AdminPage: React.FC = () => {
         peerConnectionRef.current.ontrack = (event) => {
             console.log("Nhận track từ xa:", event.track.kind);
             remoteStreamRef.current = event.streams[0];
+            setRemoteStream(event.streams[0]);
 
             // Xử lý audio từ xa
             if (remoteAudioRef.current && event.track.kind === 'audio') {
@@ -360,6 +364,8 @@ const AdminPage: React.FC = () => {
         setActiveCallType('audio');
         setCallModalVisible(false);
         setCallInProgress(false);
+        setMuted(false);
+        setVideoEnabled(true);
         console.log("Cuộc gọi đã kết thúc");
     };
 
@@ -381,6 +387,8 @@ const AdminPage: React.FC = () => {
         setActiveCallType('audio');
         setCallModalVisible(false);
         setCallInProgress(false);
+        setMuted(false);
+        setVideoEnabled(true);
         console.log("Khách hàng đã kết thúc cuộc gọi");
     };
 
@@ -549,6 +557,8 @@ const AdminPage: React.FC = () => {
                 toggleVideo={() => setVideoEnabled(!videoEnabled)}
                 muted={muted}
                 toggleMute={() => setMuted(!muted)}
+                localStream={localStream}
+                remoteStream={remoteStream}
                 localVideoRef={localVideoRef}
                 remoteVideoRef={remoteVideoRef}
             />

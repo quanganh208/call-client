@@ -1,13 +1,12 @@
 import {Avatar, Button, Card, Input, Typography} from "antd";
 import {IoCloseCircle} from "react-icons/io5";
-import {FaFacebook} from "react-icons/fa";
-import {IoIosCall, IoIosVideocam} from "react-icons/io";
+import {IoIosCall, IoIosVideocam, IoMdMic, IoMdMicOff} from "react-icons/io";
 import {SmileOutlined} from "@ant-design/icons";
 import {FiPaperclip, FiSend} from "react-icons/fi";
 import UserInformationForm from "@/app/components/user-info-form";
-import {useEffect, useState, useRef} from "react";
+import React, {useEffect, useState, useRef} from "react";
 import io from "socket.io-client";
-import {MdCallEnd} from "react-icons/md";
+import {MdCallEnd, MdVideocam, MdVideocamOff} from "react-icons/md";
 
 interface ChatWindowProps {
     onCloseChatWindow: () => void;
@@ -25,6 +24,8 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
     const [showForm, setShowForm] = useState(false);
     const [callStatus, setCallStatus] = useState<"idle" | "calling" | "connected">("idle");
     const [callType, setCallType] = useState<"audio" | "video">("audio");
+    const [muted, setMuted] = useState(false);
+    const [videoEnabled, setVideoEnabled] = useState(true);
     const [callDuration, setCallDuration] = useState(0);
     const timerInterval = useRef<NodeJS.Timeout | null>(null);
 
@@ -100,10 +101,12 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
             }
 
             // Gửi yêu cầu gọi đến server với loại cuộc gọi
-            socketRef.current.emit("call-request", { callType: type });
+            socketRef.current.emit("call-request", {callType: type});
         } catch (error) {
             console.error(`Không thể bắt đầu cuộc gọi ${type}:`, error);
             setCallStatus("idle");
+            setMuted(false);
+            setVideoEnabled(true);
         }
     };
 
@@ -197,7 +200,11 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
     };
 
     // Xử lý nhận offer từ admin
-    const handleOffer = async (data: { offer: RTCSessionDescriptionInit, source: string, callType: "audio" | "video" }) => {
+    const handleOffer = async (data: {
+        offer: RTCSessionDescriptionInit,
+        source: string,
+        callType: "audio" | "video"
+    }) => {
         try {
             adminIdRef.current = data.source;
             setCallType(data.callType);
@@ -286,6 +293,8 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
 
         cleanupWebRTC();
         setCallStatus("idle");
+        setMuted(false);
+        setVideoEnabled(true);
         console.log("Cuộc gọi đã kết thúc");
     };
 
@@ -293,6 +302,8 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
     const handleCallEnded = async () => {
         cleanupWebRTC();
         setCallStatus("idle");
+        setMuted(false);
+        setVideoEnabled(true);
         console.log("Tư vấn viên đã kết thúc cuộc gọi");
     };
 
@@ -365,6 +376,25 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
             }
         };
     }, [callStatus]);
+
+    // Xử lý bật/tắt video
+    useEffect(() => {
+        if (localStreamRef.current) {
+            localStreamRef.current.getVideoTracks().forEach(track => {
+                track.enabled = videoEnabled;
+            });
+        }
+    }, [videoEnabled]);
+
+    // Xử lý Mute/Unmute
+    useEffect(() => {
+        if (localStreamRef.current) {
+            localStreamRef.current.getAudioTracks().forEach(track => {
+                track.enabled = !muted;
+            });
+        }
+    }, [muted]);
+
 
     useEffect(() => {
         const savedUserInfo = localStorage.getItem('userInfo');
@@ -439,37 +469,15 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
                     }}>
                         {!userInfo ? (
                                 <div>
-                                    <div style={{display: 'flex'}}>
+                                    <div style={{display: 'flex', alignItems: 'center'}}>
                                         {chatLogo()}
-                                        <div style={{marginLeft: '16px'}}>
-                                            <Title level={5} style={{color: 'white'}}>OMI LiveTalk</Title>
-                                            <Text style={{color: 'white', fontSize: '14px', lineHeight: 'normal'}}>Chúng tôi
-                                                luôn
-                                                sẵn
-                                                sàng
-                                                để có thể tư vấn cho anh/chị. Hãy
-                                                Chat hoặc Gọi ngay cho chúng tôi nhé.</Text>
-                                        </div>
+                                        <Title level={5} style={{color: 'white', marginLeft: '16px'}}>DSS LiveTalk</Title>
                                     </div>
-                                    <div style={{height: '20px'}}/>
-                                    <Button
-                                        type="text"
-                                        icon={<FaFacebook size={20} color='white'/>}
-                                        shape='circle'
-                                        style={{
-                                            backgroundColor: '#ffffff1a',
-                                            padding: '6px',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                        }}
-                                        onClick={() => {
-                                        }}
-                                    />
                                 </div>) :
                             <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
                                 <div style={{height: '36px', display: 'flex', alignItems: 'center'}}>
                                     {callStatus === "idle" ? (
-                                            <Text style={{color: 'white', fontSize: '15px'}}>OMI LiveTalk</Text>)
+                                            <Text style={{color: 'white', fontSize: '15px'}}>DSS LiveTalk</Text>)
                                         : (
                                             <div style={{
                                                 display: 'flex',
@@ -491,55 +499,95 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
                                 {callStatus === "idle" ? (
                                     <div style={{display: 'flex', gap: '8px'}}>
                                         <Button
+                                            icon={<IoIosCall/>}
                                             style={{
                                                 backgroundColor: '#00b1ff',
                                                 justifyContent: 'center',
                                                 alignItems: 'center',
                                                 borderRadius: '12px',
                                                 height: '36px',
+                                                width: '36px',
                                                 border: 'none',
                                                 color: 'white',
+                                                fontSize: '20px'
                                             }}
                                             onClick={() => initiateCall("audio")}
                                         >
-                                            <IoIosCall style={{fontSize: '20px'}}/>
+
                                         </Button>
                                         <Button
+                                            icon={<IoIosVideocam/>}
                                             style={{
                                                 backgroundColor: '#56cc6e',
                                                 justifyContent: 'center',
                                                 alignItems: 'center',
                                                 borderRadius: '12px',
                                                 height: '36px',
+                                                width: '36px',
                                                 border: 'none',
                                                 color: 'white',
+                                                fontSize: '20px'
                                             }}
                                             onClick={() => initiateCall("video")}
                                         >
-                                            <IoIosVideocam style={{fontSize: '20px'}}/>
+
                                         </Button>
                                     </div>
                                 ) : (
-                                    <Button
-                                        style={{
-                                            backgroundColor: '#ff5955',
-                                            justifyContent: 'center',
-                                            alignItems: 'center',
-                                            borderRadius: '12px',
-                                            height: '36px',
-                                            border: 'none',
-                                            color: 'white',
-                                        }}
-                                        onClick={endCall}
-                                    >
-                                        <MdCallEnd style={{fontSize: '20px'}}/>
-                                    </Button>)
+                                    <div>
+                                        {callStatus === 'connected' && callType === 'video' && <Button
+                                            onClick={() => setVideoEnabled(!videoEnabled)}
+                                            icon={videoEnabled ? <MdVideocam/> : <MdVideocamOff color='#1E3150'/>}
+                                            style={{
+                                                backgroundColor: videoEnabled ? '#ffffff1a' : 'white',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '12px',
+                                                width: '36px',
+                                                height: '36px',
+                                                fontSize: '20px',
+                                                marginRight: '8px'
+                                            }}
+                                        />}
+                                        {callStatus === 'connected' && <Button
+                                            onClick={() => setMuted(!muted)}
+                                            icon={muted ? <IoMdMicOff color='#1E3150'/> : <IoMdMic/>}
+                                            style={{
+                                                backgroundColor: muted ? 'white' : '#ffffff1a',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '12px',
+                                                width: '36px',
+                                                height: '36px',
+                                                fontSize: '20px',
+                                                marginRight: '8px'
+                                            }}
+                                        />}
+
+                                        <Button
+                                            icon={<MdCallEnd/>}
+                                            style={{
+                                                backgroundColor: '#ff5955',
+                                                justifyContent: 'center',
+                                                alignItems: 'center',
+                                                borderRadius: '12px',
+                                                height: '36px',
+                                                width: '36px',
+                                                border: 'none',
+                                                color: 'white',
+                                                fontSize: '20px',
+                                            }}
+                                            onClick={endCall}
+                                        >
+                                        </Button>
+                                    </div>
+                                )
                                 }
                             </div>
                         }
                     </div>
 
-                    {!userInfo ? (<div style={{padding: '16px', height: '250px'}}>
+                    {!userInfo ? (<div style={{padding: '16px', height: '400px'}}>
                         <Text style={{fontSize: '12px', marginBottom: '8px'}}>*các cuộc gọi hoàn toàn miễn phí</Text>
                         <div style={{
                             display: 'flex',
@@ -581,7 +629,7 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
                     </div>) : (
                         <div style={{
                             padding: '16px',
-                            height: '350px',
+                            height: '400px',
                             position: 'relative',
                             display: 'flex',
                             flexDirection: 'column',
@@ -646,7 +694,7 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
                         }}>
                             {chatLogo('16px', '16px')}
                             <Text style={{fontSize: '12px', color: '#1e3150', opacity: 0.6}}>Tích hợp miễn phí <Text
-                                style={{color: '#00b1ff', fontSize: '12px'}}>OMI LiveTalk</Text> vào website của
+                                style={{color: '#00b1ff', fontSize: '12px'}}>DSS LiveTalk</Text> vào website của
                                 bạn</Text>
                         </div>
 

@@ -1,12 +1,13 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {Button, Modal, Row, Tooltip, Typography} from 'antd';
 import {
-    IoIosCall,
+    IoIosCall, IoIosVideocam,
     IoMdMic,
     IoMdMicOff,
 } from 'react-icons/io';
 import {IoPersonCircle} from 'react-icons/io5';
-import {MdCallEnd, MdVideocam, MdVideocamOff} from 'react-icons/md';
+import {MdCallEnd, MdFullscreen, MdVideocam, MdVideocamOff} from 'react-icons/md';
+import FullscreenVideoCall from './fullscreen-video-call';
 
 interface CallModalProps {
     visible: boolean;
@@ -19,6 +20,8 @@ interface CallModalProps {
     toggleVideo: () => void;
     muted: boolean;
     toggleMute: () => void;
+    localStream: MediaStream | null;
+    remoteStream: MediaStream | null;
     localVideoRef: React.RefObject<HTMLVideoElement>;
     remoteVideoRef: React.RefObject<HTMLVideoElement>;
 }
@@ -36,22 +39,26 @@ export default function CallModal({
                                       toggleVideo,
                                       muted,
                                       toggleMute,
+                                      localStream,
+                                      remoteStream,
                                       localVideoRef,
                                       remoteVideoRef
                                   }: CallModalProps) {
     const [time, setTime] = useState(new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}));
     const [callDuration, setCallDuration] = useState(0);
+    const [isFullscreen, setIsFullscreen] = useState(false);
     const timerInterval = useRef<NodeJS.Timeout | null>(null);
 
     const formatTime = (seconds: number) => {
         const minutes = Math.floor(seconds / 60);
         const secs = seconds % 60;
-        return `${minutes.toString().padStart(2, "0")}:${secs
-            .toString()
-            .padStart(2, "0")}`;
+        return `${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
     };
 
-    // Cập nhật thời gian hiện tại
+    const toggleFullscreen = () => {
+        setIsFullscreen(!isFullscreen);
+    };
+
     useEffect(() => {
         const interval = setInterval(() => {
             setTime(new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}));
@@ -59,26 +66,19 @@ export default function CallModal({
         return () => clearInterval(interval);
     }, []);
 
-    // Bộ đếm thời gian cuộc gọi
     useEffect(() => {
-        // Bắt đầu đếm thời gian khi cuộc gọi bắt đầu
         if (callInProgress) {
-            // Reset thời gian khi bắt đầu cuộc gọi mới
             setCallDuration(0);
-
-            // Tạo interval để cập nhật thời gian cuộc gọi mỗi giây
+            setIsFullscreen(false);
             timerInterval.current = setInterval(() => {
                 setCallDuration(prev => prev + 1);
             }, 1000);
         } else {
-            // Dừng đếm thời gian khi cuộc gọi kết thúc
             if (timerInterval.current) {
                 clearInterval(timerInterval.current);
                 timerInterval.current = null;
             }
         }
-
-        // Cleanup khi component unmount
         return () => {
             if (timerInterval.current) {
                 clearInterval(timerInterval.current);
@@ -86,6 +86,34 @@ export default function CallModal({
             }
         };
     }, [callInProgress]);
+
+    useEffect(() => {
+        if (remoteVideoRef.current && remoteStream) {
+            remoteVideoRef.current.srcObject = remoteStream;
+        }
+        if (localVideoRef.current && localStream) {
+            localVideoRef.current.srcObject = localStream;
+        }
+    }, [localStream, remoteStream, localVideoRef, remoteVideoRef, isFullscreen]);
+
+    if (isFullscreen && callType === 'video' && callInProgress) {
+        return (
+            <FullscreenVideoCall
+                name={name}
+                localStream={localStream}
+                remoteStream={remoteStream}
+                localVideoRef={localVideoRef}
+                remoteVideoRef={remoteVideoRef}
+                onEndCall={onReject}
+                onToggleMute={toggleMute}
+                onToggleVideo={toggleVideo}
+                muted={muted}
+                videoEnabled={videoEnabled}
+                onMinimize={() => setIsFullscreen(false)}
+                callDuration={formatTime(callDuration)}
+            />
+        );
+    }
 
     return (
         <Modal
@@ -108,7 +136,35 @@ export default function CallModal({
             }}
             style={{padding: 0}}
         >
-            <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+
+            {
+                callInProgress && callType === 'video' && (
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        marginBottom: '18px',
+                        alignItems: 'center'
+                    }}>
+                        <Text style={{color: 'white'}}>Cuộc gọi Video</Text>
+                        <Tooltip title='Toàn màn hình'>
+                            <Button
+                                onClick={toggleFullscreen}
+                                icon={<MdFullscreen/>}
+                                style={{
+                                    backgroundColor: 'transparent',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '12px',
+                                    width: '36px',
+                                    height: '36px',
+                                    fontSize: '20px',
+                                }}
+                            />
+                        </Tooltip>
+                    </div>
+                )
+            }
+            <div>
                 {callType === 'video' && callInProgress && (
                     <div style={{width: '100%', marginBottom: '16px'}}>
                         <div style={{
@@ -117,10 +173,8 @@ export default function CallModal({
                             gap: '8px',
                             marginBottom: '16px'
                         }}>
-                            {/* Remote video (larger) */}
                             <div style={{
-                                width: '65%',
-                                height: '240px',
+                                flex: 1,
                                 backgroundColor: '#000',
                                 borderRadius: '8px',
                                 overflow: 'hidden',
@@ -149,10 +203,8 @@ export default function CallModal({
                                 </div>
                             </div>
 
-                            {/* Local video (smaller) */}
                             <div style={{
-                                width: '35%',
-                                height: '240px',
+                                flex: 1,
                                 backgroundColor: '#000',
                                 borderRadius: '8px',
                                 overflow: 'hidden',
@@ -178,39 +230,41 @@ export default function CallModal({
                                     borderRadius: '4px',
                                     fontSize: '12px'
                                 }}>
-                                    Bạn
+                                    Tôi
                                 </div>
                             </div>
                         </div>
                     </div>
                 )}
 
-                {/* Caller info */}
-                <div style={{display: 'flex', marginBottom: '8px', width: '100%'}}>
-                    <IoPersonCircle size={36} color='white'/>
-                    <div style={{marginLeft: '8px'}}>
-                        <div style={{
-                            color: '#b0b8c8',
-                            fontSize: '12px'
-                        }}>{name || 'Không xác định'}, {time}</div>
-                        <div style={{
-                            backgroundColor: '#ffffff1a',
-                            borderRadius: '12px',
-                            padding: '8px',
-                            marginTop: '4px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            fontSize: '15px',
-                            fontWeight: '500'
-                        }}>
-                            <IoIosCall style={{fontSize: '20px', marginRight: '8px'}}/>
-                            {callInProgress
-                                ? `Cuộc gọi ${callType === 'audio' ? 'Audio' : 'Video'} đang diễn ra`
-                                : `Đang yêu cầu cuộc gọi ${callType === 'audio' ? 'Audio' : 'Video'}`
-                            }
+                {callInProgress && callType === 'video' ? null : (
+                    <div style={{display: 'flex', marginBottom: '8px', width: '100%'}}>
+                        <IoPersonCircle size={36} color='white'/>
+                        <div style={{marginLeft: '8px'}}>
+                            <div style={{
+                                color: '#b0b8c8',
+                                fontSize: '12px'
+                            }}>{name || 'Không xác định'}, {time}</div>
+                            <div style={{
+                                backgroundColor: '#ffffff1a',
+                                borderRadius: '12px',
+                                padding: '8px',
+                                marginTop: '4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                fontSize: '15px',
+                                fontWeight: '500'
+                            }}>
+                                {callType === 'audio' ? (
+                                    <IoIosCall style={{fontSize: '20px', marginRight: '8px'}}/>) : (
+                                    <IoIosVideocam style={{fontSize: '20px', marginRight: '8px'}}/>)}
+                                {callInProgress
+                                    ? `Cuộc gọi ${callType === 'audio' ? 'Audio' : 'Video'} đang diễn ra`
+                                    : `Đang yêu cầu cuộc gọi ${callType === 'audio' ? 'Audio' : 'Video'}`
+                                }
+                            </div>
                         </div>
-                    </div>
-                </div>
+                    </div>)}
 
                 <div style={{
                     height: '1px',
@@ -219,7 +273,6 @@ export default function CallModal({
                     margin: '16px 0'
                 }}></div>
 
-                {/* Call controls */}
                 <div style={{
                     display: 'flex',
                     flexDirection: 'row',
@@ -228,13 +281,12 @@ export default function CallModal({
                     alignItems: 'center'
                 }}>
                     {!callInProgress ? (
-                        // Controls when call is not yet accepted
                         <>
                             <Tooltip title="Chấp nhận">
                                 <Button
                                     onClick={onAccept}
                                     type="primary"
-                                    icon={<IoIosCall/>}
+                                    icon={callType === 'audio' ? <IoIosCall/> : <IoIosVideocam/>}
                                     style={{
                                         borderRadius: '12px',
                                         backgroundColor: '#56cc6e',
@@ -268,49 +320,46 @@ export default function CallModal({
                             </Tooltip>
                         </>
                     ) : (
-                        // Controls during active call
                         <>
-                            <Text style={{color: 'white', fontSize: '20px'}}>{formatTime(callDuration)}</Text>
+                            <Text style={{color: 'white', fontSize: '24px'}}>{formatTime(callDuration)}</Text>
                             <Row style={{alignItems: 'center', gap: '8px'}}>
-                                {/* Video toggle button - Only show for video calls */}
                                 {callType === 'video' && (
-                                    <Tooltip title={videoEnabled ? "Tắt camera" : "Bật camera"}>
-                                        <Button
-                                            onClick={toggleVideo}
-                                            icon={videoEnabled ? <MdVideocam/> : <MdVideocamOff/>}
-                                            style={{
-                                                backgroundColor: '#ffffff1a',
-                                                color: 'white',
-                                                border: 'none',
-                                                borderRadius: '12px',
-                                                width: '40px',
-                                                height: '40px',
-                                                fontSize: '20px',
-                                            }}
-                                        >
-                                        </Button>
-                                    </Tooltip>
+                                    <>
+                                        <Tooltip title={videoEnabled ? "Tắt camera" : "Bật camera"}>
+                                            <Button
+                                                onClick={toggleVideo}
+                                                icon={videoEnabled ? <MdVideocam/> : <MdVideocamOff color='#1E3150'/>}
+                                                style={{
+                                                    backgroundColor: !videoEnabled ? 'white' : '#ffffff1a',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '12px',
+                                                    width: '36px',
+                                                    height: '36px',
+                                                    fontSize: '20px',
+                                                }}
+                                            />
+                                        </Tooltip>
+                                    </>
                                 )}
 
-                                {/* Mute/Unmute button */}
                                 <Tooltip title={muted ? "Bật mic" : "Tắt mic"}>
                                     <Button
                                         onClick={toggleMute}
-                                        icon={muted ? <IoMdMicOff/> : <IoMdMic/>}
+                                        icon={muted ? <IoMdMicOff color='#1E3150'/> : <IoMdMic/>}
                                         style={{
-                                            backgroundColor: '#ffffff1a',
+                                            backgroundColor: muted ? 'white' : '#ffffff1a',
                                             color: 'white',
                                             border: 'none',
                                             borderRadius: '12px',
-                                            width: '40px',
-                                            height: '40px',
+                                            width: '36px',
+                                            height: '36px',
                                             fontSize: '20px',
-                                            marginRight: '16px'
+                                            marginRight: '8px'
                                         }}
                                     />
                                 </Tooltip>
 
-                                {/* End call button */}
                                 <Tooltip title="Kết thúc cuộc gọi">
                                     <Button
                                         onClick={onReject}
