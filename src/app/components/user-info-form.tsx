@@ -57,6 +57,7 @@ export default function UserInformationForm({onClose, onSubmit}: UserInformation
                     <Form.Item
                         name="name"
                         label={<Text strong>Tên đầy đủ</Text>}
+                        rules={[{required: true, message: 'Vui lòng nhập tên đầy đủ'}]}
                         style={{marginBottom: '16px'}}
                     >
                         <Input
@@ -88,6 +89,7 @@ export default function UserInformationForm({onClose, onSubmit}: UserInformation
                     <Form.Item
                         name="email"
                         label={<Text strong>Email</Text>}
+                        rules={[{required: true, message: 'Vui lòng nhập email'}]}
                         style={{marginBottom: '24px'}}
                     >
                         <Input
