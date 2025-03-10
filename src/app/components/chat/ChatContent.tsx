@@ -2,13 +2,11 @@ import React from "react";
 import {ChatInput} from "./ChatInput";
 
 interface ChatContentProps {
-    userInfo: any;
     onFocus: () => void;
     height?: string;
 }
 
 export function ChatContent({
-                                userInfo,
                                 onFocus,
                                 height = "400px",
                             }: ChatContentProps) {

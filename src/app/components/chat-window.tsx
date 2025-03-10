@@ -543,7 +543,6 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
                                             height="500px"
                                         />
                                         <ChatContent
-                                            userInfo={userInfo}
                                             onFocus={() => !userInfo && setShowForm(true)}
                                             height="500px"
                                         />
