@@ -1,19 +1,18 @@
-import { Avatar, Button, Card, Input, message, Typography } from "antd";
+import { Avatar, Button, Card, message, Typography } from "antd";
 import {
   IoIosCall,
   IoIosVideocam,
-  IoMdMic,
-  IoMdMicOff,
   IoMdSettings,
 } from "react-icons/io";
-import { SmileOutlined } from "@ant-design/icons";
-import { FiPaperclip, FiSend } from "react-icons/fi";
 import UserInformationForm from "@/app/components/user-info-form";
 import React, { useEffect, useState, useRef } from "react";
 import io from "socket.io-client";
-import { MdCallEnd, MdVideocam, MdVideocamOff } from "react-icons/md";
 import { IoCloseCircle } from "react-icons/io5";
 import "@ant-design/v5-patch-for-react-19";
+import { Header } from "./chat/Header";
+import { VideoCall } from "./chat/VideoCall";
+import { ChatContent } from "./chat/ChatContent";
+import { ChatInput } from "./chat/ChatInput";
 
 interface ChatWindowProps {
   onCloseChatWindow: () => void;
@@ -37,6 +36,7 @@ export default function ChatWindow({ onCloseChatWindow }: ChatWindowProps) {
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [callDuration, setCallDuration] = useState(0);
   const timerInterval = useRef<NodeJS.Timeout | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const socketRef = useRef<any>(null);
@@ -48,6 +48,10 @@ export default function ChatWindow({ onCloseChatWindow }: ChatWindowProps) {
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const adminIdRef = useRef<string | null>(null);
+
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const fullscreenContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!userInfo) return;
@@ -102,6 +106,7 @@ export default function ChatWindow({ onCloseChatWindow }: ChatWindowProps) {
         mediaConstraints
       );
       localStreamRef.current = stream;
+      setLocalStream(stream);
 
       if (localAudioRef.current) {
         localAudioRef.current.srcObject = stream;
@@ -177,6 +182,7 @@ export default function ChatWindow({ onCloseChatWindow }: ChatWindowProps) {
 
     peerConnectionRef.current.ontrack = (event) => {
       remoteStreamRef.current = event.streams[0];
+      setRemoteStream(event.streams[0]);
 
       if (remoteAudioRef.current) {
         remoteAudioRef.current.srcObject = event.streams[0];
@@ -351,14 +357,6 @@ export default function ChatWindow({ onCloseChatWindow }: ChatWindowProps) {
     setShowForm(false);
   };
 
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${minutes.toString().padStart(2, "0")}:${secs
-      .toString()
-      .padStart(2, "0")}`;
-  };
-
   useEffect(() => {
     if (callStatus === "connected") {
       timerInterval.current = setInterval(() => {
@@ -405,23 +403,8 @@ export default function ChatWindow({ onCloseChatWindow }: ChatWindowProps) {
     }
   }, []);
 
-  const chatLogo = (width?: string, height?: string) => (
-    <Avatar
-      style={{
-        backgroundColor: "#1890ff",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: width || "40px",
-        height: height || "40px",
-        flexShrink: 0,
-      }}
-      icon={<Text style={{ color: "white" }}>C</Text>}
-    />
-  );
-
   const chatWindowWidth =
-    callType === "video" && callStatus !== "idle" ? "870px" : "435px";
+    callType === "video" && callStatus !== "idle" ? "819px" : "435px";
 
   return (
     <div
@@ -484,172 +467,18 @@ export default function ChatWindow({ onCloseChatWindow }: ChatWindowProps) {
             width: "100%",
           }}
         >
-          <div
-            style={{
-              padding: userInfo ? "16px" : "24px",
-              background: "#1E3150",
-              display: "flex",
-              flexDirection: "column",
-            }}
-          >
-            {!userInfo ? (
-              <div>
-                <div style={{ display: "flex", alignItems: "center" }}>
-                  {chatLogo()}
-                  <Title
-                    level={5}
-                    style={{ color: "white", marginLeft: "16px" }}
-                  >
-                    DSS LiveTalk
-                  </Title>
-                </div>
-              </div>
-            ) : (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <div
-                  style={{
-                    height: "36px",
-                    display: "flex",
-                    alignItems: "center",
-                  }}
-                >
-                  {callStatus === "idle" ? (
-                    <Text style={{ color: "white", fontSize: "15px" }}>
-                      DSS LiveTalk
-                    </Text>
-                  ) : (
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: "white",
-                          fontSize: "15px",
-                        }}
-                      >
-                        {callStatus === "calling"
-                          ? `Gọi ${callType}`
-                          : formatTime(callDuration)}
-                      </Text>
-                      <Text
-                        style={{
-                          color: "white",
-                          fontSize: "15px",
-                          opacity: 0.5,
-                        }}
-                      >
-                        {callStatus === "calling"
-                          ? "Đang đổ chuông..."
-                          : "Đã kết nối"}
-                      </Text>
-                    </div>
-                  )}
-                </div>
-                {callStatus === "idle" ? (
-                  <div style={{ display: "flex", gap: "8px" }}>
-                    <Button
-                      icon={<IoIosCall />}
-                      style={{
-                        backgroundColor: "#00b1ff",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        borderRadius: "12px",
-                        height: "36px",
-                        width: "36px",
-                        border: "none",
-                        color: "white",
-                        fontSize: "20px",
-                      }}
-                      onClick={() => initiateCall("audio")}
-                    ></Button>
-                    <Button
-                      icon={<IoIosVideocam />}
-                      style={{
-                        backgroundColor: "#56cc6e",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        borderRadius: "12px",
-                        height: "36px",
-                        width: "36px",
-                        border: "none",
-                        color: "white",
-                        fontSize: "20px",
-                      }}
-                      onClick={() => initiateCall("video")}
-                    ></Button>
-                  </div>
-                ) : (
-                  <div>
-                    {callStatus === "connected" && callType === "video" && (
-                      <Button
-                        onClick={() => setVideoEnabled(!videoEnabled)}
-                        icon={
-                          videoEnabled ? (
-                            <MdVideocam />
-                          ) : (
-                            <MdVideocamOff color="#1E3150" />
-                          )
-                        }
-                        style={{
-                          backgroundColor: videoEnabled ? "#ffffff1a" : "white",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "12px",
-                          width: "36px",
-                          height: "36px",
-                          fontSize: "20px",
-                          marginRight: "8px",
-                        }}
-                      />
-                    )}
-                    {callStatus === "connected" && (
-                      <Button
-                        onClick={() => setMuted(!muted)}
-                        icon={
-                          muted ? <IoMdMicOff color="#1E3150" /> : <IoMdMic />
-                        }
-                        style={{
-                          backgroundColor: muted ? "white" : "#ffffff1a",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "12px",
-                          width: "36px",
-                          height: "36px",
-                          fontSize: "20px",
-                          marginRight: "8px",
-                        }}
-                      />
-                    )}
-
-                    <Button
-                      icon={<MdCallEnd />}
-                      style={{
-                        backgroundColor: "#ff5955",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        borderRadius: "12px",
-                        height: "36px",
-                        width: "36px",
-                        border: "none",
-                        color: "white",
-                        fontSize: "20px",
-                      }}
-                      onClick={endCall}
-                    ></Button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          <Header
+            userInfo={userInfo}
+            callStatus={callStatus}
+            callType={callType}
+            callDuration={callDuration}
+            muted={muted}
+            videoEnabled={videoEnabled}
+            onVideoToggle={() => setVideoEnabled(!videoEnabled)}
+            onMuteToggle={() => setMuted(!muted)}
+            onEndCall={endCall}
+            onInitiateCall={initiateCall}
+          />
 
           <div
             style={{
@@ -713,152 +542,18 @@ export default function ChatWindow({ onCloseChatWindow }: ChatWindowProps) {
               <>
                 {callType === "video" && callStatus !== "idle" ? (
                   <>
-                    <div
-                      style={{
-                        flex: 1,
-                        height: "500px",
-                        position: "relative",
-                        backgroundColor: "#f0f0f0",
-                        borderRadius: "8px",
-                      }}
-                    >
-                      <audio
-                        ref={localAudioRef}
-                        autoPlay
-                        playsInline
-                        style={{ display: "none" }}
-                      />
-                      <audio
-                        ref={remoteAudioRef}
-                        autoPlay
-                        playsInline
-                        style={{ display: "none" }}
-                      />
-                      <video
-                        ref={remoteVideoRef}
-                        autoPlay
-                        playsInline
-                        style={{
-                          transform: "scaleX(-1)",
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                        }}
-                      />
-                      <video
-                        ref={localVideoRef}
-                        autoPlay
-                        playsInline
-                        muted
-                        style={{
-                          transform: "scaleX(-1)",
-                          position: "absolute",
-                          width: "120px",
-                          height: "90px",
-                          bottom: "16px",
-                          right: "16px",
-                          objectFit: "cover",
-                          borderRadius: "8px",
-                          border: "2px solid white",
-                          backgroundColor: "#e6e6e6",
-                          zIndex: 2,
-                        }}
-                      />
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        backgroundColor: "#fff",
-                        flex: 1,
-                        height: "500px",
-                      }}
-                    >
-                      <div
-                        style={{ flex: 1, padding: "16px", overflowY: "auto" }}
-                      >
-                        {/* Chat content will go here */}
-                      </div>
-
-                      <div
-                        style={{
-                          padding: "8px 16px",
-                          background: "#f5f6fa",
-                          borderTop: "1px solid #f0f0f0",
-                        }}
-                      >
-                        <div
-                          style={{
-                            paddingTop: "8px",
-                            paddingBottom: "16px",
-                            flexDirection: "row",
-                            gap: "8px",
-                            display: "flex",
-                          }}
-                        >
-                          {chatLogo("16px", "16px")}
-                          <Text
-                            style={{
-                              fontSize: "12px",
-                              color: "#1e3150",
-                              opacity: 0.6,
-                            }}
-                          >
-                            Tích hợp miễn phí{" "}
-                            <Text
-                              style={{ color: "#00b1ff", fontSize: "12px" }}
-                            >
-                              DSS LiveTalk
-                            </Text>{" "}
-                            vào website của bạn
-                          </Text>
-                        </div>
-
-                        <Input
-                          onFocus={() => !userInfo && setShowForm(true)}
-                          placeholder="Nhập tin nhắn"
-                          style={{
-                            background: "transparent",
-                            fontSize: "15px",
-                            flex: 1,
-                            padding: "8px 0",
-                            border: "none",
-                            boxShadow: "none",
-                          }}
-                          suffix={
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "24px",
-                              }}
-                            >
-                              <SmileOutlined
-                                style={{
-                                  fontSize: "20px",
-                                  color: "#404040",
-                                  cursor: "pointer",
-                                }}
-                              />
-                              <FiPaperclip
-                                style={{
-                                  fontSize: "20px",
-                                  color: "#404040",
-                                  cursor: "pointer",
-                                }}
-                              />
-                              <FiSend
-                                style={{
-                                  fontSize: "20px",
-                                  color: "#404040",
-                                  cursor: "pointer",
-                                }}
-                              />
-                            </div>
-                          }
-                        />
-                      </div>
-                    </div>
+                    <VideoCall
+                      localAudioRef={localAudioRef}
+                      remoteAudioRef={remoteAudioRef}
+                      localVideoRef={localVideoRef}
+                      remoteVideoRef={remoteVideoRef}
+                      height="500px"
+                    />
+                    <ChatContent
+                      userInfo={userInfo}
+                      onFocus={() => !userInfo && setShowForm(true)}
+                      height="500px"
+                    />
                   </>
                 ) : (
                   <div
@@ -891,77 +586,10 @@ export default function ChatWindow({ onCloseChatWindow }: ChatWindowProps) {
           </div>
 
           {(!userInfo || callType !== "video" || callStatus === "idle") && (
-            <div
-              style={{
-                padding: "8px 16px",
-                background: "#f5f6fa",
-              }}
-            >
-              <div
-                style={{
-                  paddingTop: "8px",
-                  paddingBottom: "16px",
-                  flexDirection: "row",
-                  gap: "8px",
-                  display: "flex",
-                }}
-              >
-                {chatLogo("16px", "16px")}
-                <Text
-                  style={{ fontSize: "12px", color: "#1e3150", opacity: 0.6 }}
-                >
-                  Tích hợp miễn phí{" "}
-                  <Text style={{ color: "#00b1ff", fontSize: "12px" }}>
-                    DSS LiveTalk
-                  </Text>{" "}
-                  vào website của bạn
-                </Text>
-              </div>
-
-              <Input
-                onFocus={() => !userInfo && setShowForm(true)}
-                placeholder="Nhập tin nhắn"
-                style={{
-                  background: "transparent",
-                  fontSize: "15px",
-                  flex: 1,
-                  padding: "8px 0",
-                  border: "none",
-                  boxShadow: "none",
-                }}
-                suffix={
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "24px",
-                    }}
-                  >
-                    <SmileOutlined
-                      style={{
-                        fontSize: "20px",
-                        color: "#404040",
-                        cursor: "pointer",
-                      }}
-                    />
-                    <FiPaperclip
-                      style={{
-                        fontSize: "20px",
-                        color: "#404040",
-                        cursor: "pointer",
-                      }}
-                    />
-                    <FiSend
-                      style={{
-                        fontSize: "20px",
-                        color: "#404040",
-                        cursor: "pointer",
-                      }}
-                    />
-                  </div>
-                }
-              />
-            </div>
+            <ChatInput
+              userInfo={userInfo}
+              onFocus={() => !userInfo && setShowForm(true)}
+            />
           )}
         </Card>
       </div>

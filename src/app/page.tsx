@@ -1,7 +1,7 @@
 'use client';
 import {FloatButton} from "antd";
 import {FaPhoneAlt} from "react-icons/fa";
-import {useState, useRef, useEffect} from "react";
+import React, {useState, useRef, useEffect} from "react";
 import {CSSProperties} from "react";
 import ChatWindow from "./components/chat-window";
 
@@ -75,7 +75,7 @@ export default function Home() {
                         position: 'fixed',
                         bottom: 0,
                         right: 0,
-                        zIndex: 1000,
+                        zIndex: 1,
                         ...getAnimationStyles()
                     }}>
                         <ChatWindow onCloseChatWindow={handleClose}/>
