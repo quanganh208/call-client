@@ -3,8 +3,14 @@ import { IoIosCall, IoIosVideocam, IoMdMic, IoMdMicOff } from "react-icons/io";
 import { MdCallEnd, MdVideocam, MdVideocamOff } from "react-icons/md";
 import { ChatLogo } from "./ChatLogo";
 
+interface UserInformation {
+  name: string;
+  phone: string;
+  email: string;
+}
+
 interface HeaderProps {
-  userInfo: any;
+  userInfo: UserInformation | null;
   callStatus: "idle" | "calling" | "connected";
   callType: "audio" | "video";
   callDuration: number;

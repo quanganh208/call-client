@@ -1,4 +1,4 @@
-import { Avatar, Button, Card, message, Typography } from "antd";
+import {Button, Card, message, Typography } from "antd";
 import {
   IoIosCall,
   IoIosVideocam,
@@ -25,7 +25,7 @@ interface UserInformation {
 }
 
 export default function ChatWindow({ onCloseChatWindow }: ChatWindowProps) {
-  const { Text, Title } = Typography;
+  const { Text } = Typography;
   const [userInfo, setUserInfo] = useState<UserInformation | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [callStatus, setCallStatus] = useState<
@@ -36,7 +36,6 @@ export default function ChatWindow({ onCloseChatWindow }: ChatWindowProps) {
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [callDuration, setCallDuration] = useState(0);
   const timerInterval = useRef<NodeJS.Timeout | null>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const socketRef = useRef<any>(null);
@@ -48,10 +47,6 @@ export default function ChatWindow({ onCloseChatWindow }: ChatWindowProps) {
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const adminIdRef = useRef<string | null>(null);
-
-  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
-  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
-  const fullscreenContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!userInfo) return;
@@ -106,7 +101,6 @@ export default function ChatWindow({ onCloseChatWindow }: ChatWindowProps) {
         mediaConstraints
       );
       localStreamRef.current = stream;
-      setLocalStream(stream);
 
       if (localAudioRef.current) {
         localAudioRef.current.srcObject = stream;
@@ -182,7 +176,6 @@ export default function ChatWindow({ onCloseChatWindow }: ChatWindowProps) {
 
     peerConnectionRef.current.ontrack = (event) => {
       remoteStreamRef.current = event.streams[0];
-      setRemoteStream(event.streams[0]);
 
       if (remoteAudioRef.current) {
         remoteAudioRef.current.srcObject = event.streams[0];
