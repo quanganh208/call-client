@@ -1,5 +1,6 @@
 import {useState} from 'react';
 import {Button, Card, Form, Input, Typography} from "antd";
+import chatAPI from "@/api/chat-services";
 
 interface UserInformationFormProps {
     onClose: () => void;
@@ -10,6 +11,8 @@ interface UserInformation {
     name: string;
     phone: string;
     email: string;
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    response?: any;
 }
 
 export default function UserInformationForm({onClose, onSubmit}: UserInformationFormProps) {
@@ -17,13 +20,16 @@ export default function UserInformationForm({onClose, onSubmit}: UserInformation
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
 
-    const handleSubmit = (values: UserInformation) => {
-        setLoading(true);
-        // Simulate API call
-        setTimeout(() => {
-            onSubmit(values);
+    const handleSubmit = async (values: UserInformation) => {
+        try {
+            setLoading(true);
+            const response = await chatAPI.HandleCreateChatGroup(values.name, values.phone, values.email);
+            onSubmit({response, ...values});
+        } catch (error) {
+            console.error(error);
+        } finally {
             setLoading(false);
-        }, 500);
+        }
     };
 
     const handleLater = () => {
