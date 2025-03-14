@@ -5,20 +5,9 @@ import {FileMessage} from "./FileMessage";
 import {message, Badge} from "antd";
 import {DownOutlined} from "@ant-design/icons";
 import {formatFileSize} from "@/util/format";
+import { Message } from "@/types/chat";
 
-interface Message {
-  id: string;
-  content: string;
-  isUser: boolean;
-  timestamp: string;
-  type: "text" | "file";
-  fileInfo?: {
-    fileName: string;
-    fileType: string;
-    fileSize: string;
-    fileUrl: string;
-  };
-}
+
 
 export function ChatContent() {
   const [messages, setMessages] = useState<Message[]>([
@@ -92,19 +81,6 @@ export function ChatContent() {
       setNewMessageCount((prev) => prev + 1);
     }
   }, [messages, isUserScrolling, isUserSending, isNewMessageAdded]);
-
-  useEffect(() => {
-    localStorage.setItem("chatMessages", JSON.stringify(messages));
-  }, [messages]);
-
-  useEffect(() => {
-    const savedMessages = localStorage.getItem("chatMessages");
-    if (savedMessages) {
-      setMessages(JSON.parse(savedMessages));
-    }
-
-    setTimeout(scrollToBottom, 100);
-  }, []);
 
   const handleSendMessage = (content: string) => {
     if (!content.trim()) return;

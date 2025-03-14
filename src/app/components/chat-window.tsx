@@ -13,7 +13,6 @@ import "@ant-design/v5-patch-for-react-19";
 import {Header} from "./chat/Header";
 import {VideoCall} from "./chat/VideoCall";
 import {ChatContent} from "./chat/ChatContent";
-import StompService from "@/api/stomp-services";
 import {UserInformation} from "@/types/chat";
 import {MdOutlineSettingsInputComposite} from "react-icons/md";
 import DeviceSettingsModal from "./chat/DeviceSettingsModal";
@@ -57,7 +56,6 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const adminIdRef = useRef<string | null>(null);
-  const stompServiceRef = useRef<StompService | null>(null);
 
   useEffect(() => {
     if (!userInfo) return;
@@ -707,34 +705,34 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
                 />
               </>
             ) : (
-              <>
-                {callType === "video" && callStatus !== "idle" ? (
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "row",
-                      height: "100%",
-                    }}
-                  >
-                    <div style={{flex: 1, height: "100%"}}>
-                      <VideoCall
-                        localAudioRef={localAudioRef}
-                        remoteAudioRef={remoteAudioRef}
-                        localVideoRef={localVideoRef}
-                        remoteVideoRef={remoteVideoRef}
-                        height="100%"
-                      />
-                    </div>
-                    <div style={{flex: 1, height: "100%"}}>
-                      <ChatContent/>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{height: "100%"}}>
-                    <ChatContent/>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "row",
+                  height: "100%",
+                }}
+              >
+                {callType === "video" && callStatus !== "idle" && (
+                  <div style={{flex: 1, height: "100%"}}>
+                    <VideoCall
+                      localAudioRef={localAudioRef}
+                      remoteAudioRef={remoteAudioRef}
+                      localVideoRef={localVideoRef}
+                      remoteVideoRef={remoteVideoRef}
+                      height="100%"
+                    />
                   </div>
                 )}
-              </>
+                <div
+                  style={{
+                    flex: callType === "video" && callStatus !== "idle" ? 1 : "auto",
+                    height: "100%",
+                    width: callType === "video" && callStatus !== "idle" ? "auto" : "100%"
+                  }}
+                >
+                  <ChatContent/>
+                </div>
+              </div>
             )}
           </div>
         </Card>

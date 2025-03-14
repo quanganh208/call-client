@@ -7,9 +7,15 @@ export interface UserInformation {
 }
 
 export interface Message {
-  id?: string;
+  id: string;
   content: string;
-  sender: string;
+  isUser: boolean;
   timestamp: string;
-  type: "CHAT" | "SYSTEM";
+  type: "text" | "file";
+  fileInfo?: {
+    fileName: string;
+    fileType: string;
+    fileSize: string;
+    fileUrl: string;
+  };
 }
