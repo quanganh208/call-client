@@ -5,34 +5,11 @@ import {FileMessage} from "./FileMessage";
 import {message, Badge} from "antd";
 import {DownOutlined} from "@ant-design/icons";
 import {formatFileSize} from "@/util/format";
-import { Message } from "@/types/chat";
-
+import {Message} from "@/types/chat";
 
 
 export function ChatContent() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      content: "Xin chào! Tôi có thể giúp gì cho bạn?",
-      isUser: false,
-      timestamp: "09:00",
-      type: "text",
-    },
-    {
-      id: "2",
-      content: "Tôi cần hỗ trợ về sản phẩm của bạn",
-      isUser: true,
-      timestamp: "09:01",
-      type: "text",
-    },
-    {
-      id: "3",
-      content: "Vâng, tôi sẽ giúp bạn. Bạn cần hỗ trợ về sản phẩm nào?",
-      isUser: false,
-      timestamp: "09:02",
-      type: "text",
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);

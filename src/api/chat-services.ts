@@ -21,7 +21,7 @@ class ChatApi {
     };
 
     //eslint-disable-next-line @typescript-eslint/no-explicit-any
-    public async HandleCreateChatGroup(name: string, phone: string, page: string): Promise<any> {
+    public async HandleCreateChatGroup(name: string, phone: string, email: string): Promise<any> {
         return await this.HandleChatApi(
             '/chatgroup/create-user',
             'post',
@@ -31,7 +31,7 @@ class ChatApi {
             {
                 name,
                 phone,
-                page
+                email
             },
         );
     }
