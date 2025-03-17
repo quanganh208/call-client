@@ -266,7 +266,7 @@ const DeviceSettingsModal: React.FC<DeviceSettingsModalProps> = ({
                     Lưu cấu hình
                 </Button>,
             ]}
-            width={500}
+            width={480}
             destroyOnClose={true}
             afterClose={() => {
                 modalClosingRef.current = true;
@@ -290,17 +290,20 @@ const DeviceSettingsModal: React.FC<DeviceSettingsModalProps> = ({
                         />
 
                         <div
-                            style={{
-                                width: "100%",
-                                height: "180px",
-                                backgroundColor: "#f0f0f0",
-                                borderRadius: "8px",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                overflow: "hidden",
-                                marginTop: '16px'
-                            }}
+                          style={{
+                              maxWidth: '320px',
+                              width: "100%",
+                              height: "180px",
+                              backgroundColor: "#f0f0f0",
+                              borderRadius: "8px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              overflow: "hidden",
+                              marginTop: '16px',
+                              marginLeft: 'auto',
+                              marginRight: 'auto'
+                          }}
                         >
                             {selectedVideoInput ? (
                                 <video
@@ -313,7 +316,7 @@ const DeviceSettingsModal: React.FC<DeviceSettingsModalProps> = ({
                                         width: "100%",
                                         height: "100%",
                                         objectFit: "cover",
-                                        objectPosition: "bottom"
+                                        objectPosition: "center"
                                     }}
                                 />
                             ) : (

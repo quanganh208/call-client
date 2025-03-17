@@ -3,7 +3,7 @@ import {FloatButton} from "antd";
 import {FaPhoneAlt} from "react-icons/fa";
 import React, {useState, useRef, useEffect} from "react";
 import {CSSProperties} from "react";
-import ChatWindow from "./components/chat-window";
+import ChatWindow from "./components/ChatWindow";
 
 export default function Home() {
     const [isVisible, setIsVisible] = useState(false);

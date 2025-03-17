@@ -7,7 +7,7 @@ import {
 } from 'react-icons/io';
 import {IoPersonCircle} from 'react-icons/io5';
 import {MdCallEnd, MdFullscreen, MdVideocam, MdVideocamOff} from 'react-icons/md';
-import FullscreenVideoCall from './fullscreen-video-call';
+import FullscreenVideoCall from './FullscreenVideoCall';
 import '@ant-design/v5-patch-for-react-19';
 
 interface CallModalProps {

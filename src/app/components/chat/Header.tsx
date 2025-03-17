@@ -2,12 +2,8 @@ import { Button, Typography } from "antd";
 import { IoIosCall, IoIosVideocam, IoMdMic, IoMdMicOff } from "react-icons/io";
 import { MdCallEnd, MdVideocam, MdVideocamOff } from "react-icons/md";
 import { ChatLogo } from "./ChatLogo";
+import {UserInformation} from "@/types/chat";
 
-interface UserInformation {
-  name: string;
-  phone: string;
-  email: string;
-}
 
 interface HeaderProps {
   userInfo: UserInformation | null;

@@ -1,16 +1,33 @@
 import React from "react";
-import { Avatar, Row, Typography } from "antd";
-import { UserOutlined } from "@ant-design/icons";
+import {Avatar, Row, Typography} from "antd";
+import {UserOutlined} from "@ant-design/icons";
+import {CheckOutlined, LoadingOutlined, ExclamationCircleOutlined} from "@ant-design/icons";
 
-const { Text } = Typography;
+const {Text} = Typography;
 
 interface ChatMessageProps {
   content: string;
   isUser: boolean;
   timestamp: string;
+  status?: 'sending' | 'sent' | 'error';
 }
 
-export function ChatMessage({ content, isUser, timestamp }: ChatMessageProps) {
+export function ChatMessage({content, isUser, timestamp, status}: ChatMessageProps) {
+  const renderStatusIcon = () => {
+    if (!isUser || !status) return null;
+
+    switch (status) {
+      case 'sending':
+        return <LoadingOutlined style={{fontSize: '12px', color: '#999', margin: '0 4px'}}/>;
+      case 'sent':
+        return <CheckOutlined style={{fontSize: '12px', color: '#52c41a', margin: '0 4px'}}/>;
+      case 'error':
+        return <ExclamationCircleOutlined style={{fontSize: '12px', color: '#ff4d4f', margin: '0 4px'}}/>;
+      default:
+        return null;
+    }
+  };
+
   return (
     <Row
       justify={isUser ? "end" : "start"}
@@ -30,11 +47,13 @@ export function ChatMessage({ content, isUser, timestamp }: ChatMessageProps) {
         {!isUser ? (
           <Avatar
             size={32}
-            icon={<UserOutlined />}
-            style={{ marginRight: "8px", flexShrink: 0 }}
+            icon={<UserOutlined/>}
+            style={{marginRight: "8px", flexShrink: 0}}
           />
         ) : (
-          <div style={{ width: "8px" }} />
+          <>
+            {renderStatusIcon()}
+          </>
         )}
 
         <div
@@ -51,7 +70,7 @@ export function ChatMessage({ content, isUser, timestamp }: ChatMessageProps) {
               color: "#999"
             }}
           >
-            {timestamp}
+            {isUser ? 'Tôi' : 'Admin'}, {timestamp}
           </Text>
           <div
             style={{
@@ -62,7 +81,7 @@ export function ChatMessage({ content, isUser, timestamp }: ChatMessageProps) {
               borderBottomLeftRadius: isUser ? "12px" : "4px",
             }}
           >
-            <Text style={{ color: isUser ? "white" : "#333", wordBreak: "break-word" }}>
+            <Text style={{color: isUser ? "white" : "#333", wordBreak: "break-word"}}>
               {content}
             </Text>
           </div>

@@ -1,6 +1,6 @@
 import {Button, Card, Dropdown, MenuProps, message, Typography} from "antd";
 import {IoIosCall, IoIosVideocam, IoMdSettings} from "react-icons/io";
-import UserInformationForm from "@/app/components/user-info-form";
+import UserInformationForm from "@/app/components/UserInformationForm";
 import React, {useEffect, useState, useRef} from "react";
 import io from "socket.io-client";
 import {
@@ -410,14 +410,14 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
     setShowForm(false);
   };
 
-  const handleSaveDeviceSettings = (settings: {
+  const handleSaveDeviceSettings = async (settings: {
     audioInput: string;
     videoInput: string;
     audioOutput: string;
   }) => {
     setDeviceSettings(settings);
     localStorage.setItem("deviceSettings", JSON.stringify(settings));
-    message.success("Đã lưu cấu hình thiết bị cuộc gọi");
+    await message.success("Đã lưu cấu hình thiết bị cuộc gọi");
   };
 
   useEffect(() => {
@@ -495,10 +495,8 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
       ),
       onClick: async () => {
         setMuteNotification(!muteNotification);
-        await message.success(
-          `Đã ${
-            muteNotification ? "bật" : "tắt"
-          } phát âm thanh thông báo khi có tin nhắn mới`
+        await message[muteNotification ? 'success' : 'warning'](
+          `Đã ${muteNotification ? "bật" : "tắt"} phát âm thanh thông báo khi có tin nhắn mới`
         );
       },
     },
@@ -537,7 +535,7 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
           <span style={{fontSize: "15px"}}>Kết thúc phiên</span>
         </div>
       ),
-      onClick: () => {
+      onClick: async () => {
         localStorage.removeItem("userInfo");
         localStorage.removeItem("deviceSettings");
 
@@ -546,7 +544,7 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
         setCallStatus("idle");
         cleanupWebRTC();
 
-        message.success("Phiên đã kết thúc");
+        await message.success("Đã kết thúc phiên trò chuyện");
       },
     },
   ];

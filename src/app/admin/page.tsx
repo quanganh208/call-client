@@ -3,7 +3,7 @@ import React, {useEffect, useRef, useState} from 'react';
 import {Card, List, Typography, Badge, Space} from 'antd';
 import io from 'socket.io-client';
 import Head from 'next/head';
-import CallModal from '../components/call-modal';
+import CallModal from '../components/CallModal';
 import '@ant-design/v5-patch-for-react-19';
 
 const {Title, Text} = Typography;
@@ -11,9 +11,9 @@ const {Title, Text} = Typography;
 interface Client {
     socketId: string;
     userData: {
-        name: string;
-        phone: string;
-        email: string;
+        SocialName: string;
+        Phone: string;
+        Email: string;
     };
     callStatus?: 'waiting' | 'connected' | 'ended';
     callType?: 'audio' | 'video';
@@ -464,7 +464,7 @@ const AdminPage: React.FC = () => {
                                         }
                                         title={
                                             <Space>
-                                                <Text strong>{client.userData.name}</Text>
+                                                <Text strong>{client.userData.SocialName}</Text>
                                                 {client.callStatus === 'waiting' && (
                                                     <Badge
                                                         count={client.callType === 'video' ? "Đang gọi video" : "Đang gọi"}
@@ -475,8 +475,8 @@ const AdminPage: React.FC = () => {
                                         }
                                         description={
                                             <div>
-                                                <div>Số điện thoại: {client.userData.phone}</div>
-                                                <div>Email: {client.userData.email}</div>
+                                                <div>Số điện thoại: {client.userData.Phone}</div>
+                                                <div>Email: {client.userData.Email}</div>
                                             </div>
                                         }
                                     />
@@ -494,7 +494,7 @@ const AdminPage: React.FC = () => {
             {/* Modal cuộc gọi */}
             <CallModal
                 visible={callModalVisible}
-                name={getActiveClient()?.userData.name}
+                name={getActiveClient()?.userData.SocialName}
                 callType={activeCallType}
                 onAccept={() => acceptCall(activeCallClientId || '')}
                 onReject={endCall}

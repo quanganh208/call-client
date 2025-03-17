@@ -16,8 +16,8 @@ export default function UserInformationForm({onClose, onSubmit}: UserInformation
   const handleSubmit = async (values: UserInformation) => {
     try {
       setLoading(true);
-      const response = await chatAPI.HandleCreateChatGroup(values.name, values.phone, values.email);
-      onSubmit({response, ...values});
+      const response = await chatAPI.HandleCreateChatGroup(values.SocialName, values.Phone, values.Email);
+      onSubmit(response);
     } catch (error) {
       console.error(error);
     } finally {
@@ -54,7 +54,7 @@ export default function UserInformationForm({onClose, onSubmit}: UserInformation
           onFinish={handleSubmit}
         >
           <Form.Item
-            name="name"
+            name="SocialName"
             label={<Text strong>Tên đầy đủ</Text>}
             rules={[{required: true, message: 'Vui lòng nhập tên đầy đủ'}]}
             style={{marginBottom: '16px'}}
@@ -70,7 +70,7 @@ export default function UserInformationForm({onClose, onSubmit}: UserInformation
           </Form.Item>
 
           <Form.Item
-            name="phone"
+            name="Phone"
             label={<Text strong>Số điện thoại</Text>}
             rules={[{required: true, message: 'Vui lòng nhập số điện thoại'}]}
             style={{marginBottom: '16px'}}
@@ -86,7 +86,7 @@ export default function UserInformationForm({onClose, onSubmit}: UserInformation
           </Form.Item>
 
           <Form.Item
-            name="email"
+            name="Email"
             label={<Text strong>Email</Text>}
             rules={[{required: true, message: 'Vui lòng nhập email'}]}
             style={{marginBottom: '24px'}}
