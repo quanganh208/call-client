@@ -10,19 +10,29 @@ interface ChatMessageProps {
   isUser: boolean;
   timestamp: string;
   status?: 'sending' | 'sent' | 'error';
+  showHeader?: boolean;
+  showStatus?: boolean;
 }
 
-export function ChatMessage({content, isUser, timestamp, status}: ChatMessageProps) {
+export function ChatMessage({
+                              content,
+                              isUser,
+                              timestamp,
+                              status,
+                              showHeader = true,
+                              showStatus = true
+                            }: ChatMessageProps) {
   const renderStatusIcon = () => {
     if (!isUser || !status) return null;
+    if (!showStatus) return <div style={{width: '11px', margin: '0 4px'}}/>;
 
     switch (status) {
       case 'sending':
-        return <LoadingOutlined style={{fontSize: '12px', color: '#999', margin: '0 4px'}}/>;
+        return <LoadingOutlined style={{fontSize: '11px', color: '#999', margin: '0 4px'}}/>;
       case 'sent':
-        return <CheckOutlined style={{fontSize: '12px', color: '#52c41a', margin: '0 4px'}}/>;
+        return <CheckOutlined style={{fontSize: '11px', color: '#52c41a', margin: '0 4px'}}/>;
       case 'error':
-        return <ExclamationCircleOutlined style={{fontSize: '12px', color: '#ff4d4f', margin: '0 4px'}}/>;
+        return <ExclamationCircleOutlined style={{fontSize: '11px', color: '#ff4d4f', margin: '0 4px'}}/>;
       default:
         return null;
     }
@@ -32,7 +42,7 @@ export function ChatMessage({content, isUser, timestamp, status}: ChatMessagePro
     <Row
       justify={isUser ? "end" : "start"}
       style={{
-        margin: "8px 0",
+        margin: "4px 0",
         width: "100%"
       }}
     >
@@ -63,15 +73,17 @@ export function ChatMessage({content, isUser, timestamp, status}: ChatMessagePro
             alignItems: isUser ? "flex-end" : "flex-start",
           }}
         >
-          <Text
-            style={{
-              fontSize: "10px",
-              margin: isUser ? "0 8px 4px 0" : "0 0 4px 8px",
-              color: "#999"
-            }}
-          >
-            {isUser ? 'Tôi' : 'Admin'}, {timestamp}
-          </Text>
+          {showHeader && (
+            <Text
+              style={{
+                fontSize: "11px",
+                margin: isUser ? "0 8px 4px 0" : "0 0 4px 8px",
+                color: "#999"
+              }}
+            >
+              {isUser ? 'Tôi' : 'Admin'}, {timestamp}
+            </Text>
+          )}
           <div
             style={{
               backgroundColor: isUser ? "#1E3150" : "#f0f0f0",
