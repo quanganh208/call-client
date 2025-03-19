@@ -68,6 +68,10 @@ export function ChatInput({
       onSendFile?.(filePreview.file);
     });
     setSelectedFiles([]);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {

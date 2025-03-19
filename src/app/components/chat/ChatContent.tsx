@@ -155,14 +155,99 @@ export function ChatContent() {
   };
 
   const handleSendFile = async (file: File) => {
+    const messageId = Date.now();
+
     try {
       setIsUserSending(true);
 
-      const fileUrl = URL.createObjectURL(file);
+      const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
+      let fileType = 'File Text';
 
-      console.log(fileUrl);
+      if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(fileExtension)) {
+        fileType = 'Image';
+      } else if (['mp3', 'wav', 'ogg', 'aac'].includes(fileExtension)) {
+        fileType = 'Audio';
+      } else if (['mp4', 'webm', 'ogg', 'mov', 'avi'].includes(fileExtension)) {
+        fileType = 'Video';
+      } else if (fileExtension === 'pdf') {
+        fileType = 'File PDF';
+      } else if (['doc', 'docx'].includes(fileExtension)) {
+        fileType = 'File Word';
+      } else if (['xls', 'xlsx'].includes(fileExtension)) {
+        fileType = 'File Excel';
+      } else if (['ppt', 'pptx'].includes(fileExtension)) {
+        fileType = 'File PowerPoint';
+      }
+
+      const fileSizeInBytes = file.size;
+      const fileSize = fileSizeInBytes < 1024
+        ? `${fileSizeInBytes} B`
+        : fileSizeInBytes < 1024 * 1024
+          ? `${(fileSizeInBytes / 1024).toFixed(2)} KB`
+          : `${(fileSizeInBytes / (1024 * 1024)).toFixed(2)} MB`;
+
+      const tempFileUrl = URL.createObjectURL(file);
+
+      const tempFileInfo = JSON.stringify([{
+        fileUrl: tempFileUrl,
+        dataType: fileType,
+        fileSize: fileSize
+      }]);
+
+      const newMessage: Message = {
+        cmChatId: messageId,
+        adClientId: savedUserInfo.AD_Client_ID,
+        adOrgId: savedUserInfo.AD_Org_ID,
+        adUserId: savedUserInfo.AD_User.id,
+        cmChatGroupId: savedUserInfo.CM_ChatGroup_ID,
+        socialName: savedUserInfo.SocialName,
+        contentText: file.name,
+        dataType: fileType,
+        file: tempFileInfo,
+        status: 'sending'
+      };
+
+      setMessages(prev => [...prev, newMessage]);
+
+      const timeoutId = setTimeout(() => {
+        setMessages(prevMessages =>
+          prevMessages.map(msg =>
+            msg.cmChatId === messageId && msg.status === 'sending'
+              ? {...msg, status: 'error'}
+              : msg
+          )
+        );
+        message.error('Không thể gửi file');
+      }, 10000);
+
+      messageTimeoutsRef.current.set(messageId, timeoutId);
+
+      await chatAPI.HandleUploadFile(
+        savedUserInfo.AD_Client_ID,
+        savedUserInfo.AD_Org_ID,
+        savedUserInfo.AD_User.id,
+        savedUserInfo.CM_ChatGroup_ID,
+        file,
+        savedUserInfo.SocialName
+      );
+
+      clearTimeout(timeoutId);
+      messageTimeoutsRef.current.delete(messageId);
     } catch (error) {
-      message.error(`Có lỗi xảy ra khi gửi file: ${String(error)}`);
+      const timeoutId = messageTimeoutsRef.current.get(messageId);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        messageTimeoutsRef.current.delete(messageId);
+      }
+
+      setMessages(prevMessages =>
+        prevMessages.map(msg =>
+          msg.cmChatId === messageId ? {...msg, status: 'error'} : msg
+        )
+      );
+
+      message.error((error && typeof error === 'object' && 'status' in error && error.status === 413) ? 'Dung lượng file quá lớn' : 'Không thể gửi file');
+      setIsUserSending(false);
     }
   };
 
@@ -171,9 +256,7 @@ export function ChatContent() {
     setMessages(prevMessages => {
       const tempMessages = [...prevMessages];
       const index = tempMessages.findIndex(
-        msg => msg.cmChatId === message.cmChat.cmChatId ||
-          (msg.status && (msg.status === 'sending' || msg.status === 'error') &&
-            msg.dataType === message.cmChat.dataType)
+        msg => (msg.status && (msg.status === 'sending' || msg.status === 'error') && msg.dataType === message.cmChat.dataType)
       );
 
       if (index !== -1) {
@@ -313,12 +396,15 @@ export function ChatContent() {
           ) : message.file ? (
             <FileMessage
               key={message.cmChatId}
-              fileName={JSON.parse(message.file)[0].fileName}
-              fileType={JSON.parse(message.file)[0].fileName}
-              fileSize={JSON.parse(message.file)[0].fileName}
-              fileUrl={JSON.parse(message.file)[0].fileName}
+              fileName={message.contentText}
+              fileType={JSON.parse(message.file)[0].dataType}
+              fileSize={JSON.parse(message.file)[0].fileSize}
+              fileUrl={JSON.parse(message.file)[0].fileUrl}
               isUser={message.socialName !== null}
               timestamp={moment(message.created).format('HH:mm')}
+              status={message.status}
+              showHeader={message.showHeader}
+              showStatus={message.showStatus}
             />
           ) : null
         )}

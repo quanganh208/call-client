@@ -42,6 +42,26 @@ class ChatApi {
       `/chat/history/${chatGroupId}?page=${page}`,
     );
   }
+
+  //eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async HandleUploadFile(adClientId: string, adOrgId: string, adUserId: string, cmChatGroupId: string, file: File, socialName: string): Promise<any> {
+    const formData = new FormData();
+    formData.append('adClientId', adClientId);
+    formData.append('adOrgId', adOrgId);
+    formData.append('adUserId', adUserId);
+    formData.append('cmChatGroupId', cmChatGroupId);
+    formData.append('file', file);
+    formData.append('socialName', socialName);
+
+    return await this.HandleChatApi(
+      '/chat/upload',
+      'post',
+      {
+        'Content-Type': 'multipart/form-data',
+      },
+      formData,
+    );
+  }
 }
 
 const chatAPI = new ChatApi();
