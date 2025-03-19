@@ -56,6 +56,10 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const adminIdRef = useRef<string | null>(null);
+  const callEndCallbackRef = useRef<((callType: "audio" | "video", duration: number) => void) | null>(null);
+  const registerCallEndCallback = (callback: (callType: "audio" | "video", duration: number) => void) => {
+    callEndCallbackRef.current = callback;
+  };
 
   useEffect(() => {
     if (!userInfo) return;
@@ -365,6 +369,10 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
       });
     }
 
+    if (callStatus === "connected" && callEndCallbackRef.current) {
+      callEndCallbackRef.current(callType, callDuration);
+    }
+
     cleanupWebRTC();
     setCallStatus("idle");
     setMuted(false);
@@ -372,6 +380,10 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
   };
 
   const handleCallEnded = async () => {
+    if (callStatus === "connected" && callEndCallbackRef.current) {
+      callEndCallbackRef.current(callType, callDuration);
+    }
+
     cleanupWebRTC();
     setCallStatus("idle");
     setMuted(false);
@@ -728,7 +740,7 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
                     width: callType === "video" && callStatus !== "idle" ? "auto" : "100%"
                   }}
                 >
-                  <ChatContent/>
+                  <ChatContent onCallEnd={registerCallEndCallback}/>
                 </div>
               </div>
             )}

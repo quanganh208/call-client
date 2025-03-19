@@ -8,8 +8,13 @@ import {Message} from "@/types/chat";
 import StompService from "@/api/stomp-services";
 import chatAPI from "@/api/chat-services";
 import moment from "moment";
+import {formatDuration} from "@/util/format";
 
-export function ChatContent() {
+type ChatContentProps = {
+  onCallEnd?: (callbackFn: (callType: "audio" | "video", duration: number) => void) => void;
+};
+
+export function ChatContent({onCallEnd}: ChatContentProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [page, setPage] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -37,6 +42,11 @@ export function ChatContent() {
       setNewMessageCount(0);
     }
   };
+
+  const sendCallEndMessage = useCallback((callType: "audio" | "video", duration: number) => {
+    const messageText = ` ${moment().format('HH:mm')} Cuộc gọi ${callType === "audio" ? "thoại" : "video"} đã diễn ra trong ${formatDuration(duration)}`;
+    handleSendMessage(messageText);
+  }, []);
 
   const fetchChatHistory = async (pageNumber: number) => {
     if (isLoading || !hasMore || fetchingRef.current) return;
@@ -321,6 +331,11 @@ export function ChatContent() {
     return result;
   };
 
+  useEffect(() => {
+    if (onCallEnd) {
+      onCallEnd(sendCallEndMessage);
+    }
+  }, [onCallEnd, sendCallEndMessage]);
 
   useEffect(() => {
     if (!isUserScrolling || isUserSending) {
