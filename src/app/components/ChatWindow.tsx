@@ -18,6 +18,8 @@ import {MdOutlineSettingsInputComposite} from "react-icons/md";
 import DeviceSettingsModal from "./chat/DeviceSettingsModal";
 import {ChatInput} from "@/app/components/chat/ChatInput";
 
+const ADMIN_PHONE_NUMBER = '3821';
+
 interface ChatWindowProps {
   onCloseChatWindow: () => void;
 }
@@ -176,7 +178,7 @@ export default function ChatWindow({onCloseChatWindow}: ChatWindowProps) {
         localVideoRef.current.muted = true;
       }
 
-      socketRef.current.emit("call-request", {callType: type});
+      socketRef.current.emit("call-request", {callType: type, targetAdminPhone: ADMIN_PHONE_NUMBER});
     } catch (error) {
       console.error(`Không thể bắt đầu cuộc gọi ${type}:`, error);
       setCallStatus("idle");
