@@ -18,7 +18,7 @@ import {MdOutlineSettingsInputComposite} from "react-icons/md";
 import DeviceSettingsModal from "./chat/DeviceSettingsModal";
 import {ChatInput} from "@/app/components/chat/ChatInput";
 
-const ADMIN_PHONE_NUMBER = '3821';
+const ADMIN_PHONE_NUMBER = '3825';
 
 interface ChatWindowProps {
   onCloseChatWindow: () => void;

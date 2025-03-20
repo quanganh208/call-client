@@ -8,7 +8,6 @@ import {
   Space,
   Button,
   Input,
-  Select,
   message,
 } from "antd";
 import io from "socket.io-client";
@@ -35,6 +34,24 @@ interface Admin {
   name: string;
 }
 
+// Thêm interface cho cuộc gọi trong hàng đợi
+interface CallQueueItem {
+  socketId: string;
+  isAdmin: boolean; // true nếu người gọi là admin, false nếu là client
+  name: string;
+  callType: "audio" | "video";
+  timestamp: number; // thời điểm nhận cuộc gọi
+}
+
+// Thêm trạng thái cuộc gọi đi
+interface OutgoingCall {
+  targetAdminPhone: string;
+  targetAdminId?: string;
+  targetAdminName?: string;
+  callType: "audio" | "video";
+  status: "calling" | "accepted" | "rejected" | "timeout";
+}
+
 const AdminPage: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [admins, setAdmins] = useState<Admin[]>([]);
@@ -52,6 +69,14 @@ const AdminPage: React.FC = () => {
   const [adminName, setAdminName] = useState("");
   const [isRegistered, setIsRegistered] = useState(false);
 
+  // Thêm state cho hàng đợi cuộc gọi
+  const [callQueue, setCallQueue] = useState<CallQueueItem[]>([]);
+
+  // Thêm state để theo dõi cuộc gọi đi
+  const [outgoingCall, setOutgoingCall] = useState<OutgoingCall | null>(null);
+  const [outgoingCallModalVisible, setOutgoingCallModalVisible] =
+    useState(false);
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const socketRef = useRef<any>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
@@ -66,6 +91,23 @@ const AdminPage: React.FC = () => {
 
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const outgoingCallRef = useRef<OutgoingCall | null>(null);
+
+  // Hàm xử lý cuộc gọi từ hàng đợi
+  const processNextCall = () => {
+    if (callQueue.length > 0 && !callInProgress) {
+      const nextCall = callQueue[0];
+      setActiveCallClientId(nextCall.socketId);
+      activeCallClientIdRef.current = nextCall.socketId;
+      setActiveCallType(nextCall.callType);
+      setCallModalVisible(true);
+
+      // Xóa cuộc gọi này khỏi hàng đợi
+      setCallQueue((prevQueue) => prevQueue.slice(1));
+    }
+  };
 
   const handleIceCandidate = (data: {
     candidate: RTCIceCandidateInit;
@@ -155,10 +197,25 @@ const AdminPage: React.FC = () => {
         };
         callType: "audio" | "video";
       }) => {
-        setActiveCallClientId(data.socketId);
-        activeCallClientIdRef.current = data.socketId;
-        setActiveCallType(data.callType);
-        setCallModalVisible(true);
+        // Nếu đang không có cuộc gọi nào hoặc không đang trong cuộc gọi
+        if (!callModalVisible && !callInProgress) {
+          setActiveCallClientId(data.socketId);
+          activeCallClientIdRef.current = data.socketId;
+          setActiveCallType(data.callType);
+          setCallModalVisible(true);
+        } else {
+          // Thêm vào hàng đợi
+          setCallQueue((prevQueue) => [
+            ...prevQueue,
+            {
+              socketId: data.socketId,
+              isAdmin: true,
+              name: data.adminData.name,
+              callType: data.callType,
+              timestamp: Date.now(),
+            },
+          ]);
+        }
       }
     );
 
@@ -167,6 +224,14 @@ const AdminPage: React.FC = () => {
       async (data: { adminId: string; callType: "audio" | "video" }) => {
         try {
           setCallInProgress(true);
+
+          // Cập nhật trạng thái cuộc gọi đi
+          if (outgoingCall) {
+            setOutgoingCall({
+              ...outgoingCall,
+              status: "accepted",
+            });
+          }
 
           const constraints = {
             audio: true,
@@ -210,12 +275,18 @@ const AdminPage: React.FC = () => {
           activeCallClientIdRef.current = null;
           setActiveCallType("audio");
           setCallInProgress(false);
+          setOutgoingCall(null);
+          setOutgoingCallModalVisible(false);
         }
       }
     );
 
     socketRef.current.on("admin-call-rejected", (data: { adminId: string }) => {
       message.error("Admin đã từ chối cuộc gọi");
+
+      // Đóng modal ngay lập tức
+      setOutgoingCall(null);
+      setOutgoingCallModalVisible(false);
       endCall();
     });
 
@@ -223,7 +294,30 @@ const AdminPage: React.FC = () => {
       message.error(
         `Không tìm thấy admin với số điện thoại ${data.phoneNumber}`
       );
+
+      // Hủy cuộc gọi đi
+      setOutgoingCall(null);
+      setOutgoingCallModalVisible(false);
     });
+
+    socketRef.current.on(
+      "admin-busy",
+      (data: { targetAdminId: string; adminName: string }) => {
+        // Hiển thị thông báo phù hợp dựa vào context
+        if (outgoingCall) {
+          // Nếu đang gọi admin thì hiển thị thông báo admin bận
+          message.warning(`Admin ${data.adminName} đang bận với cuộc gọi khác`);
+          // Hủy cuộc gọi đi
+          setOutgoingCall(null);
+          setOutgoingCallModalVisible(false);
+        } else {
+          // Nếu là client gọi đến admin thì hiển thị thông báo admin bận
+          message.warning(
+            `Admin ${data.adminName} đang bận, vui lòng thử lại sau`
+          );
+        }
+      }
+    );
 
     socketRef.current.on("new-client", (client: Client) => {
       setClients((prevClients) => {
@@ -270,29 +364,58 @@ const AdminPage: React.FC = () => {
           });
         });
 
-        setActiveCallClientId(data.socketId);
-        activeCallClientIdRef.current = data.socketId;
-        setActiveCallType(data.callType);
-        setCallModalVisible(true);
+        // Nếu đang không có cuộc gọi nào hoặc không đang trong cuộc gọi
+        if (!callModalVisible && !callInProgress) {
+          setActiveCallClientId(data.socketId);
+          activeCallClientIdRef.current = data.socketId;
+          setActiveCallType(data.callType);
+          setCallModalVisible(true);
+        } else {
+          // Thêm vào hàng đợi
+          setCallQueue((prevQueue) => [
+            ...prevQueue,
+            {
+              socketId: data.socketId,
+              isAdmin: false,
+              name: data.userData.SocialName || "Khách hàng",
+              callType: data.callType,
+              timestamp: Date.now(),
+            },
+          ]);
+        }
       }
     );
 
-    socketRef.current.on("call-timeout", () => {
-      setClients((prevClients) => {
-        return prevClients.map((c) => {
-          if (c.socketId === activeCallClientIdRef.current) {
-            return { ...c, callStatus: "ended" };
-          }
-          return c;
+    socketRef.current.on("call-timeout", (data: { socketId: string }) => {
+      // Nếu là cuộc gọi từ client
+      if (clients.some((c) => c.socketId === data.socketId)) {
+        setClients((prevClients) => {
+          return prevClients.map((c) => {
+            if (c.socketId === activeCallClientIdRef.current) {
+              return { ...c, callStatus: "ended" };
+            }
+            return c;
+          });
         });
-      });
+      }
 
-      cleanupWebRTC();
-      setActiveCallClientId(null);
-      activeCallClientIdRef.current = null;
-      setActiveCallType("audio");
-      setCallModalVisible(false);
-      setCallInProgress(false);
+      // Kiểm tra nếu đây là cuộc gọi đang hiển thị
+      if (data.socketId === activeCallClientIdRef.current) {
+        cleanupWebRTC();
+        setActiveCallClientId(null);
+        activeCallClientIdRef.current = null;
+        setActiveCallType("audio");
+        setCallModalVisible(false);
+        setCallInProgress(false);
+
+        // Xử lý cuộc gọi tiếp theo trong hàng đợi
+        setTimeout(processNextCall, 500);
+      } else {
+        // Xóa khỏi hàng đợi nếu là cuộc gọi đang chờ
+        setCallQueue((prevQueue) =>
+          prevQueue.filter((call) => call.socketId !== data.socketId)
+        );
+      }
     });
 
     socketRef.current.on(
@@ -314,6 +437,95 @@ const AdminPage: React.FC = () => {
           setActiveCallType("audio");
           setCallModalVisible(false);
           setCallInProgress(false);
+
+          // Xử lý cuộc gọi tiếp theo trong hàng đợi
+          setTimeout(processNextCall, 500);
+        } else {
+          // Xóa khỏi hàng đợi nếu là cuộc gọi đang chờ
+          setCallQueue((prevQueue) =>
+            prevQueue.filter((call) => call.socketId !== data.socketId)
+          );
+        }
+      }
+    );
+
+    socketRef.current.on("admin-call-timeout", (data: { adminId: string }) => {
+      if (activeCallClientIdRef.current === data.adminId) {
+        message.info("Cuộc gọi đã hết thời gian chờ");
+
+        // Ẩn modal cuộc gọi nếu đang hiển thị
+        setCallModalVisible(false);
+        setActiveCallClientId(null);
+        activeCallClientIdRef.current = null;
+        setActiveCallType("audio");
+        cleanupWebRTC();
+
+        // Xử lý cuộc gọi tiếp theo trong hàng đợi
+        setTimeout(processNextCall, 500);
+      } else {
+        // Xóa khỏi hàng đợi nếu là cuộc gọi đang chờ
+        setCallQueue((prevQueue) =>
+          prevQueue.filter((call) => call.socketId !== data.adminId)
+        );
+      }
+    });
+
+    // Cập nhật xử lý admin-call-sent để lưu targetAdminId
+    socketRef.current.on(
+      "admin-call-sent",
+      (data: { targetAdminId: string; phoneNumber: string }) => {
+        if (outgoingCallRef.current) {
+          setOutgoingCall({
+            ...outgoingCallRef.current,
+            targetAdminId: data.targetAdminId,
+          });
+
+          // Thiết lập timeout 30 giây cho cuộc gọi đi
+          setTimeout(() => {
+            // Kiểm tra xem cuộc gọi còn đang diễn ra không
+            if (
+              outgoingCallRef.current &&
+              outgoingCallRef.current.status === "calling"
+            ) {
+              // Hiển thị thông báo bằng message thay vì trạng thái trong modal
+              message.warning("Không có phản hồi từ admin");
+
+              // Thông báo cho server rằng cuộc gọi đã hết thời gian
+              if (socketRef.current && outgoingCallRef.current.targetAdminId) {
+                socketRef.current.emit("admin-call-timeout", {
+                  targetAdminId: outgoingCallRef.current.targetAdminId,
+                });
+              }
+
+              // Đóng modal ngay lập tức thay vì đổi trạng thái và chờ đóng
+              setOutgoingCall(null);
+              setOutgoingCallModalVisible(false);
+              cleanupWebRTC();
+            }
+          }, 30000);
+        }
+      }
+    );
+
+    socketRef.current.on(
+      "call-ended",
+      (data: { source: string; isAdmin?: boolean }) => {
+        // Kiểm tra nếu đây là cuộc gọi đi bị kết thúc
+        if (
+          outgoingCallRef.current &&
+          outgoingCallRef.current.targetAdminId === data.source
+        ) {
+          message.info("Cuộc gọi đã kết thúc");
+          setOutgoingCall(null);
+          setOutgoingCallModalVisible(false);
+        }
+
+        // Kiểm tra xem có phải cuộc gọi hiện tại
+        if (activeCallClientIdRef.current === data.source) {
+          handleCallEnded();
+
+          // Xử lý cuộc gọi tiếp theo trong hàng đợi
+          setTimeout(processNextCall, 500);
         }
       }
     );
@@ -323,7 +535,6 @@ const AdminPage: React.FC = () => {
     socket.on("offer", handleOffer);
     socket.on("answer", handleAnswer);
     socket.on("ice-candidate", handleIceCandidate);
-    socket.on("call-ended", handleCallEnded);
 
     return () => {
       if (socket) {
@@ -335,6 +546,8 @@ const AdminPage: React.FC = () => {
         socket.off("admin-call-accepted");
         socket.off("admin-call-rejected");
         socket.off("admin-not-found");
+        socket.off("admin-call-sent");
+        socket.off("admin-call-timeout");
         socket.off("new-client");
         socket.off("client-disconnected");
         socket.off("incoming-call");
@@ -364,6 +577,11 @@ const AdminPage: React.FC = () => {
       });
     }
   }, [videoEnabled]);
+
+  useEffect(() => {
+    // Cập nhật ref để có thể truy cập giá trị mới nhất trong closure
+    outgoingCallRef.current = outgoingCall;
+  }, [outgoingCall]);
 
   const acceptCall = async (clientId: string) => {
     try {
@@ -517,6 +735,9 @@ const AdminPage: React.FC = () => {
     setCallInProgress(false);
     setMuted(false);
     setVideoEnabled(true);
+
+    // Xử lý cuộc gọi tiếp theo trong hàng đợi
+    setTimeout(processNextCall, 500);
   };
 
   const handleCallEnded = () => {
@@ -537,6 +758,9 @@ const AdminPage: React.FC = () => {
     setCallInProgress(false);
     setMuted(false);
     setVideoEnabled(true);
+
+    // Xử lý cuộc gọi tiếp theo trong hàng đợi
+    setTimeout(processNextCall, 500);
   };
 
   const cleanupWebRTC = () => {
@@ -628,6 +852,29 @@ const AdminPage: React.FC = () => {
   ) => {
     if (!socketRef.current) return;
 
+    // Tìm thông tin admin được gọi
+    const targetAdmin = admins.find(
+      (admin) => admin.phoneNumber === targetAdminPhone
+    );
+
+    if (!targetAdmin) {
+      message.error("Không tìm thấy admin");
+      return;
+    }
+
+    // Thiết lập thông tin cuộc gọi đi
+    setOutgoingCall({
+      targetAdminPhone,
+      targetAdminId: targetAdmin.socketId,
+      targetAdminName: targetAdmin.name,
+      callType,
+      status: "calling",
+    });
+
+    // Hiển thị modal cuộc gọi đi
+    setOutgoingCallModalVisible(true);
+
+    // Gửi yêu cầu gọi
     socketRef.current.emit("admin-call-admin", {
       targetAdminPhone,
       callType,
@@ -686,6 +933,20 @@ const AdminPage: React.FC = () => {
       setActiveCallType("audio");
       setCallInProgress(false);
     }
+  };
+
+  // Thêm hàm để hủy cuộc gọi đi
+  const cancelOutgoingCall = () => {
+    if (!socketRef.current || !outgoingCall || !outgoingCall.targetAdminId)
+      return;
+
+    socketRef.current.emit("end-call", {
+      targetId: outgoingCall.targetAdminId,
+    });
+
+    setOutgoingCall(null);
+    setOutgoingCallModalVisible(false);
+    cleanupWebRTC();
   };
 
   return (
@@ -831,7 +1092,7 @@ const AdminPage: React.FC = () => {
         style={{ display: "none" }}
       />
 
-      {/* Modal cuộc gọi */}
+      {/* Modal cuộc gọi đến */}
       <CallModal
         visible={callModalVisible}
         name={
@@ -872,6 +1133,47 @@ const AdminPage: React.FC = () => {
         localVideoRef={localVideoRef}
         remoteVideoRef={remoteVideoRef}
       />
+
+      {/* Modal cuộc gọi đi */}
+      <CallModal
+        visible={outgoingCallModalVisible}
+        name={outgoingCall?.targetAdminName || "Admin"}
+        callType={outgoingCall?.callType || "audio"}
+        isOutgoing={true}
+        onAccept={() => {
+          /* Không cần cho cuộc gọi đi */
+        }}
+        onReject={cancelOutgoingCall}
+        callInProgress={callInProgress}
+        videoEnabled={videoEnabled}
+        toggleVideo={() => setVideoEnabled(!videoEnabled)}
+        muted={muted}
+        toggleMute={() => setMuted(!muted)}
+        localStream={localStream}
+        remoteStream={remoteStream}
+        localVideoRef={localVideoRef}
+        remoteVideoRef={remoteVideoRef}
+      />
+
+      {/* Hiển thị thông tin về số cuộc gọi đang chờ trong hàng đợi */}
+      {callQueue.length > 0 && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 16,
+            right: 16,
+            backgroundColor: "#1890ff",
+            color: "white",
+            padding: "8px 16px",
+            borderRadius: 8,
+            zIndex: 1000,
+          }}
+        >
+          <Typography.Text style={{ color: "white" }}>
+            Có {callQueue.length} cuộc gọi đang chờ
+          </Typography.Text>
+        </div>
+      )}
     </div>
   );
 };
